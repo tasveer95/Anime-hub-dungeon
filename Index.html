@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Anime-Inspired 3D Hub → Dungeon (Playable)</title>
+  <style>
+    :root{
+      --bg:#070A12;
+      --glass: rgba(10,14,26,0.70);
+      --glass2: rgba(255,255,255,0.06);
+      --stroke: rgba(255,255,255,0.14);
+      --text: rgba(235,241,255,0.92);
+      --muted: rgba(235,241,255,0.68);
+      --good: rgba(102,242,185,0.96);
+      --gold: rgba(255,208,102,0.96);
+      --danger: rgba(255,118,118,0.96);
+      --shadow: 0 18px 55px rgba(0,0,0,0.45);
+      --r: 18px;
+    }
+    html,body{height:100%; margin:0; background: radial-gradient(1100px 800px at 35% 20%, #203070 0%, var(--bg) 55%); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; overflow:hidden;}
+    #wrap{position:relative; width:100vw; height:100vh;}
+    canvas{display:block;}
+
+    /* strict 16:9 letterbox */
+    #barsTop,#barsBot{position:absolute; left:0; width:100%; height:0; background: rgba(0,0,0,0.88); pointer-events:none; z-index:50;}
+    #barsTop{top:0;} #barsBot{bottom:0;}
+
+    /* Left HUD panel (like your reference) */
+    #hud{
+      position:absolute; left:16px; top:16px; width:360px;
+      background: var(--glass);
+      border:1px solid var(--stroke);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding:14px;
+      user-select:none;
+      z-index:60;
+    }
+    .hudTitle{display:flex; justify-content:space-between; align-items:center; font-weight:800; letter-spacing:0.2px;}
+    .chip{padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background: rgba(255,255,255,0.05); color:var(--muted); font-size:12px;}
+    .barWrap{margin-top:10px; padding:10px; border-radius:14px; border:1px solid var(--stroke); background: rgba(255,255,255,0.05);}
+    .barLabel{font-size:12px; color:var(--muted); margin-bottom:6px;}
+    .hpBar{height:12px; border-radius:999px; background: rgba(255,255,255,0.08); overflow:hidden; border:1px solid rgba(255,255,255,0.10);}
+    .hpFill{height:100%; width:100%; background: linear-gradient(90deg, rgba(255,90,90,0.95), rgba(102,242,185,0.95));}
+    .row{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;}
+    .card{flex:1; min-width:160px; padding:10px; border-radius:14px; border:1px solid var(--stroke); background: rgba(255,255,255,0.05);}
+    .k{font-size:12px; color:var(--muted); margin-bottom:4px;}
+    .v{font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px;}
+    .hint{margin-top:10px; font-size:12px; color:var(--muted); line-height:1.35;}
+    .good{color:var(--good); font-weight:800;}
+    .gold{color:var(--gold); font-weight:800;}
+
+    /* Top-right resource counters */
+    #topRight{
+      position:absolute; right:16px; top:16px;
+      display:flex; flex-direction:column; gap:10px;
+      z-index:60;
+    }
+    .counter{
+      display:flex; align-items:center; justify-content:space-between;
+      min-width:170px;
+      padding:10px 12px;
+      border-radius: 16px;
+      border:1px solid var(--stroke);
+      background: var(--glass);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+    }
+    .counterLeft{display:flex; align-items:center; gap:10px;}
+    .icon{
+      width:22px; height:22px;
+      display:inline-block;
+      border-radius: 7px;
+      background: rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.12);
+    }
+    .count{font-weight:900; font-size:18px;}
+    .plus{
+      width:26px; height:26px; border-radius: 8px;
+      border:1px solid rgba(255,255,255,0.20);
+      background: rgba(102,242,185,0.12);
+      display:flex; align-items:center; justify-content:center;
+      color: var(--good);
+      font-weight:900;
+    }
+
+    /* Bottom pickup notifications */
+    #feed{
+      position:absolute; left:50%; bottom:22px; transform: translateX(-50%);
+      width:min(760px, calc(100vw - 30px));
+      display:flex; flex-direction:column; gap:10px;
+      z-index:60;
+      pointer-events:none;
+    }
+    .feedItem{
+      display:flex; align-items:center; gap:12px;
+      padding:10px 14px;
+      border-radius: 16px;
+      border:1px solid var(--stroke);
+      background: rgba(10,14,26,0.55);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 55px rgba(0,0,0,0.40);
+      opacity:0;
+      transform: translateY(10px);
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .feedItem.show{opacity:1; transform: translateY(0);}
+    .feedText{font-weight:800; letter-spacing:0.1px;}
+    .feedSub{color:var(--muted); font-size:12px; margin-left:auto;}
+
+    /* Mobile Attack button (right) */
+    #attackBtn{
+      position:absolute; right:22px; bottom:120px;
+      width:120px; height:120px; border-radius: 999px;
+      border:1px solid rgba(255,255,255,0.18);
+      background: radial-gradient(circle at 40% 35%, rgba(255,220,140,0.22), rgba(255,208,102,0.08) 55%, rgba(10,14,26,0.55));
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      display:flex; align-items:center; justify-content:center;
+      z-index:60;
+      cursor:pointer;
+      user-select:none;
+      touch-action: manipulation;
+    }
+    #attackBtn:active{transform: translateY(1px) scale(0.99);}
+    .attackInner{
+      width:92px; height:92px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:6px;
+    }
+    .attackLabel{font-weight:900; color:var(--gold); letter-spacing:0.3px;}
+    .small{font-size:11px; color:var(--muted); font-weight:700;}
+
+    /* Center helper toast */
+    #toast{
+      position:absolute; left:50%; top:16px; transform: translateX(-50%);
+      width:min(520px, calc(100vw - 30px));
+      padding:10px 14px;
+      border-radius: 16px;
+      border:1px solid var(--stroke);
+      background: rgba(10,14,26,0.55);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      z-index:60;
+      opacity:0; transform: translate(-50%, -6px);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events:none;
+      text-align:center;
+      color: var(--muted);
+      font-weight:700;
+    }
+    #toast.show{opacity:1; transform: translate(-50%, 0);}
+
+    @media (max-width: 820px){
+      #hud{width: 330px;}
+      #attackBtn{right:16px; bottom:100px; width:108px; height:108px;}
+      .attackInner{width:84px; height:84px;}
+    }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <div id="barsTop"></div><div id="barsBot"></div>
+
+  <div id="toast"></div>
+
+  <div id="hud">
+    <div class="hudTitle">
+      <div>Prototype</div>
+      <div class="chip" id="zoneChip">Zone: Start</div>
+    </div>
+
+    <div class="barWrap">
+      <div class="barLabel">HP <span class="gold" id="hpText">10/10</span></div>
+      <div class="hpBar"><div class="hpFill" id="hpFill"></div></div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <div class="k">Resources</div>
+        <div class="v"><span class="gold" id="woodText">0</span> wood · <span class="gold" id="stoneText">0</span> stone</div>
+      </div>
+      <div class="card">
+        <div class="k">Controls</div>
+        <div class="v" style="font-size:14px">
+          <span class="good">Click</span> to look · <span class="good">WASD</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint">
+      Sprint: <span class="good">Shift</span> · Attack: <span class="good">Space / Click</span><br/>
+      Enter the <span class="gold">portal gate</span> to reach the dungeon.
+    </div>
+  </div>
+
+  <div id="topRight">
+    <div class="counter">
+      <div class="counterLeft">
+        <span class="icon" id="woodIcon"></span>
+        <div class="count" id="woodCount">0</div>
+      </div>
+      <div class="plus">+</div>
+    </div>
+    <div class="counter">
+      <div class="counterLeft">
+        <span class="icon" id="stoneIcon"></span>
+        <div class="count" id="stoneCount">0</div>
+      </div>
+      <div class="plus">+</div>
+    </div>
+  </div>
+
+  <div id="feed"></div>
+
+  <div id="attackBtn" aria-label="Attack">
+    <div class="attackInner">
+      <div style="font-size:26px">🗡️</div>
+      <div class="attackLabel">Attack</div>
+      <div class="small">Space / Tap</div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+  // =========================
+  // 16:9 fixed internal render
+  // =========================
+  const INTERNAL_W = 1280, INTERNAL_H = 720, INTERNAL_ASPECT = INTERNAL_W / INTERNAL_H;
+  const wrap = document.getElementById("wrap");
+  const barsTop = document.getElementById("barsTop");
+  const barsBot = document.getElementById("barsBot");
+
+  const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(INTERNAL_W, INTERNAL_H, false);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  wrap.appendChild(renderer.domElement);
+
+  function resizeToWindow(){
+    const ww = innerWidth, wh = innerHeight;
+    let drawW = ww, drawH = ww / INTERNAL_ASPECT;
+    if (drawH > wh){ drawH = wh; drawW = wh * INTERNAL_ASPECT; }
+    renderer.domElement.style.cssText =
+      `position:absolute;left:${(ww-drawW)/2}px;top:${(wh-drawH)/2}px;width:${drawW}px;height:${drawH}px;`;
+    const barH = Math.max(0, (wh - drawH)/2);
+    barsTop.style.height = `${barH}px`;
+    barsBot.style.height = `${barH}px`;
+  }
+  addEventListener("resize", resizeToWindow);
+  resizeToWindow();
+
+  // =========================
+  // UI helpers
+  // =========================
+  const ui = {
+    zoneChip: document.getElementById("zoneChip"),
+    hpText: document.getElementById("hpText"),
+    hpFill: document.getElementById("hpFill"),
+    woodText: document.getElementById("woodText"),
+    stoneText: document.getElementById("stoneText"),
+    woodCount: document.getElementById("woodCount"),
+    stoneCount: document.getElementById("stoneCount"),
+    feed: document.getElementById("feed"),
+    toast: document.getElementById("toast"),
+    attackBtn: document.getElementById("attackBtn"),
+    woodIcon: document.getElementById("woodIcon"),
+    stoneIcon: document.getElementById("stoneIcon"),
+  };
+
+  function setIcon(el, type){
+    // tiny inline SVG “anime-gamey” icons (original)
+    const svg = (type==="wood")
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 64 64">
+          <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#FFDD8A"/><stop offset="1" stop-color="#C97B2D"/></linearGradient></defs>
+          <path d="M10 36c12-18 32-18 44 0-12 18-32 18-44 0Z" fill="url(#g)"/>
+          <path d="M18 34c10-10 18-10 28 0" stroke="rgba(255,255,255,.55)" stroke-width="4" fill="none" stroke-linecap="round"/>
+        </svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 64 64">
+          <defs><linearGradient id="s" x1="0" x2="1"><stop stop-color="#D9E6FF"/><stop offset="1" stop-color="#6078B6"/></linearGradient></defs>
+          <path d="M18 10 52 26 46 54 12 38Z" fill="url(#s)"/>
+          <path d="M22 26l18 10" stroke="rgba(255,255,255,.55)" stroke-width="4" stroke-linecap="round"/>
+        </svg>`;
+    el.style.background = "rgba(255,255,255,0.06)";
+    el.style.display = "grid";
+    el.style.placeItems = "center";
+    el.innerHTML = svg;
+  }
+  setIcon(ui.woodIcon, "wood");
+  setIcon(ui.stoneIcon, "stone");
+
+  let toastTimer = null;
+  function showToast(msg){
+    ui.toast.textContent = msg;
+    ui.toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>ui.toast.classList.remove("show"), 1400);
+  }
+
+  function pushFeed(icon, text){
+    const item = document.createElement("div");
+    item.className = "feedItem";
+    item.innerHTML = `
+      <div style="font-size:20px">${icon}</div>
+      <div class="feedText">${text}</div>
+      <div class="feedSub">Collected</div>
+    `;
+    ui.feed.prepend(item);
+    requestAnimationFrame(()=>item.classList.add("show"));
+    setTimeout(()=>{
+      item.classList.remove("show");
+      setTimeout(()=>item.remove(), 220);
+    }, 1200);
+  }
+
+  // =========================
+  // Game state
+  // =========================
+  const GAME = {
+    zone: "start",
+    hp: 10,
+    hpMax: 10,
+    inv: { wood: 0, stone: 0 }
+  };
+
+  function syncUI(){
+    ui.zoneChip.textContent = `Zone: ${GAME.zone === "start" ? "Start" : "Dungeon"}`;
+    ui.hpText.textContent = `${GAME.hp}/${GAME.hpMax}`;
+    ui.hpFill.style.width = `${(GAME.hp / GAME.hpMax) * 100}%`;
+    ui.woodText.textContent = GAME.inv.wood;
+    ui.stoneText.textContent = GAME.inv.stone;
+    ui.woodCount.textContent = GAME.inv.wood;
+    ui.stoneCount.textContent = GAME.inv.stone;
+  }
+  syncUI();
+
+  // =========================
+  // Toon/anime look (original)
+  // =========================
+  function makeToonRamp(){
+    const size = 256;
+    const c = document.createElement("canvas");
+    c.width = size; c.height = 1;
+    const ctx = c.getContext("2d");
+    const g = ctx.createLinearGradient(0,0,size,0);
+    g.addColorStop(0.00, "#0b0f1a");
+    g.addColorStop(0.35, "#2a3554");
+    g.addColorStop(0.70, "#7b92d6");
+    g.addColorStop(1.00, "#ffffff");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,size,1);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    return tex;
+  }
+  const toonRamp = makeToonRamp();
+  const toonMat = (hex) => new THREE.MeshToonMaterial({ color: hex, gradientMap: toonRamp });
+
+  function addOutline(mesh, scale=1.06, color=0x0b0f1a){
+    const outline = new THREE.Mesh(
+      mesh.geometry,
+      new THREE.MeshBasicMaterial({ color, side: THREE.BackSide })
+    );
+    outline.scale.multiplyScalar(scale);
+    mesh.add(outline);
+  }
+
+  // =========================
+  // World setup
+  // =========================
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x070A12, 35, 170);
+
+  const camera = new THREE.PerspectiveCamera(58, INTERNAL_ASPECT, 0.1, 300);
+
+  const hemi = new THREE.HemisphereLight(0xbfd3ff, 0x0b0f1a, 0.95);
+  scene.add(hemi);
+
+  const sun = new THREE.DirectionalLight(0xffffff, 1.25);
+  sun.position.set(14, 20, 10);
+  scene.add(sun);
+
+  // Zone groups
+  const startGroup = new THREE.Group();
+  const dungeonGroup = new THREE.Group();
+  scene.add(startGroup);
+  scene.add(dungeonGroup);
+  dungeonGroup.visible = false;
+
+  // Start: ground + rocks + crystals
+  const startGround = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), toonMat(0x121a2f));
+  startGround.rotation.x = -Math.PI/2;
+  startGroup.add(startGround);
+
+  function addRock(group, x,z, s=1){
+    const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0*s, 0), toonMat(0x2a3554));
+    m.position.set(x, 1.0*s, z);
+    m.rotation.set(Math.random(), Math.random(), Math.random());
+    addOutline(m, 1.07);
+    group.add(m);
+  }
+  for (let i=0;i<30;i++){
+    addRock(startGroup, (Math.random()-0.5)*90, (Math.random()-0.5)*80, 0.8+Math.random()*1.6);
+  }
+
+  function addCrystal(group, x,z){
+    const geo = new THREE.ConeGeometry(0.65, 3.0, 10);
+    const crystal = new THREE.Mesh(geo, toonMat(0x4aa9ff));
+    crystal.position.set(x, 1.5, z);
+    crystal.rotation.y = Math.random()*Math.PI;
+    addOutline(crystal, 1.06);
+    group.add(crystal);
+
+    const glow = new THREE.PointLight(0x4aa9ff, 0.7, 16);
+    glow.position.set(x, 2.2, z);
+    group.add(glow);
+  }
+  for (let i=0;i<9;i++){
+    addCrystal(startGroup, (Math.random()-0.5)*70, (Math.random()-0.5)*60);
+  }
+
+  // Dungeon: floor + corridor + room + lanterns
+  const dungeonFloor = new THREE.Mesh(new THREE.PlaneGeometry(110, 240), toonMat(0x0f1220));
+  dungeonFloor.rotation.x = -Math.PI/2;
+  dungeonFloor.position.set(0, 0, -140);
+  dungeonGroup.add(dungeonFloor);
+
+  function addWall(x,y,z,w,h,d){
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), toonMat(0x1a2240));
+    wall.position.set(x,y,z);
+    addOutline(wall, 1.03);
+    dungeonGroup.add(wall);
+  }
+  // corridor
+  addWall(-14, 2.7, -110, 2.5, 5.4, 90);
+  addWall( 14, 2.7, -110, 2.5, 5.4, 90);
+  // room
+  addWall( 0, 2.7, -210, 40, 5.4, 2.5);
+  addWall(-20,2.7, -190, 2.5, 5.4, 40);
+  addWall( 20,2.7, -190, 2.5, 5.4, 40);
+
+  function addLantern(x,z){
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.22,2.3,10), toonMat(0x2a3554));
+    pole.position.set(x, 1.15, z);
+    addOutline(pole, 1.06);
+    dungeonGroup.add(pole);
+
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 14), toonMat(0xffd066));
+    lamp.position.set(x, 2.25, z);
+    addOutline(lamp, 1.06);
+    dungeonGroup.add(lamp);
+
+    const light = new THREE.PointLight(0xffd066, 0.85, 18);
+    light.position.set(x, 2.25, z);
+    dungeonGroup.add(light);
+  }
+  addLantern(-8, -130);
+  addLantern( 8, -155);
+  addLantern( 0, -185);
+
+  // Portal gate in start area (walk-through)
+  const gate = new THREE.Group();
+  gate.position.set(0,0,-70);
+  startGroup.add(gate);
+
+  const frame = new THREE.Mesh(new THREE.TorusGeometry(5.0, 0.38, 10, 28), toonMat(0x6a7db0));
+  frame.rotation.x = Math.PI/2; frame.position.y = 3.6;
+  addOutline(frame, 1.05);
+  gate.add(frame);
+
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.65,0.8,7.2, 12), toonMat(0x2a3554));
+  pillar.position.set(-4.4, 3.6, 0); addOutline(pillar, 1.06); gate.add(pillar);
+  const pillar2 = pillar.clone(); pillar2.position.set(4.4, 3.6, 0); gate.add(pillar2);
+
+  // Animated portal swirl (original procedural texture)
+  function makePortalTexture(){
+    const s = 512;
+    const c = document.createElement("canvas");
+    c.width = s; c.height = s;
+    const ctx = c.getContext("2d");
+
+    function draw(t){
+      ctx.clearRect(0,0,s,s);
+      ctx.save();
+      ctx.translate(s/2, s/2);
+
+      const rings = 80;
+      for (let i=0;i<rings;i++){
+        const r = (i / rings) * (s*0.45);
+        const a = i*0.25 + t*1.7;
+        const x = Math.cos(a) * r * 0.07;
+        const y = Math.sin(a) * r * 0.07;
+
+        const grad = ctx.createRadialGradient(x,y, r*0.05, x,y, r*0.18);
+        grad.addColorStop(0, "rgba(90,255,210,0.65)");
+        grad.addColorStop(0.6, "rgba(80,200,160,0.20)");
+        grad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x,y, r*0.22, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // edge glow
+      const edge = ctx.createRadialGradient(0,0, s*0.18, 0,0, s*0.48);
+      edge.addColorStop(0, "rgba(160,255,230,0)");
+      edge.addColorStop(0.65, "rgba(120,255,220,0.08)");
+      edge.addColorStop(0.88, "rgba(120,255,220,0.30)");
+      edge.addColorStop(1, "rgba(120,255,220,0)");
+      ctx.fillStyle = edge;
+      ctx.beginPath();
+      ctx.arc(0,0, s*0.48, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    draw(0);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+
+    return { tex, canvas:c, draw };
+  }
+
+  const portalTexObj = makePortalTexture();
+  const portalMat = new THREE.MeshBasicMaterial({
+    map: portalTexObj.tex,
+    transparent:true,
+    opacity:0.95,
+    side: THREE.DoubleSide
+  });
+
+  const portalDisc = new THREE.Mesh(new THREE.CircleGeometry(4.3, 64), portalMat);
+  portalDisc.position.set(0, 3.6, 0);
+  portalDisc.rotation.x = Math.PI/2;
+  gate.add(portalDisc);
+
+  const portalGlow = new THREE.PointLight(0x50c8a0, 1.1, 26);
+  portalGlow.position.set(0, 3.6, 0);
+  gate.add(portalGlow);
+
+  // =========================
+  // Player (smooth controller)
+  // =========================
+  const player = new THREE.Group();
+  scene.add(player);
+
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 1.0, 6, 10), toonMat(0xD6E1FF));
+  body.position.y = 1.25; addOutline(body, 1.06); player.add(body);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), toonMat(0xA9C2FF));
+  head.position.y = 2.08; addOutline(head, 1.06); player.add(head);
+
+  const buddy = new THREE.Mesh(new THREE.SphereGeometry(0.20, 14, 14), toonMat(0x50C8A0));
+  buddy.position.set(-0.86, 1.75, 0.25); addOutline(buddy, 1.10); player.add(buddy);
+
+  player.position.set(0,0,40);
+
+  // =========================
+  // Input: smooth camera look (mouse)
+  // =========================
+  const input = { keys: new Set(), yaw: 0, pitch: 0, locked:false };
+  addEventListener("keydown", e => input.keys.add(e.key.toLowerCase()));
+  addEventListener("keyup", e => input.keys.delete(e.key.toLowerCase()));
+
+  renderer.domElement.addEventListener("click", () => {
+    renderer.domElement.requestPointerLock?.();
+  });
+
+  document.addEventListener("pointerlockchange", () => {
+    input.locked = (document.pointerLockElement === renderer.domElement);
+    if (input.locked) showToast("Mouse look enabled. (Esc to release)");
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!input.locked) return;
+    const sens = 0.0023;
+    input.yaw   -= e.movementX * sens;
+    input.pitch -= e.movementY * sens;
+    input.pitch = Math.max(-0.85, Math.min(0.55, input.pitch));
+  });
+
+  // Touch look (mobile): drag on screen
+  let touchActive=false, lastX=0, lastY=0;
+  renderer.domElement.addEventListener("touchstart", (e)=>{
+    if (e.touches.length!==1) return;
+    touchActive=true;
+    lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
+  }, {passive:true});
+  renderer.domElement.addEventListener("touchmove", (e)=>{
+    if (!touchActive || e.touches.length!==1) return;
+    const x=e.touches[0].clientX, y=e.touches[0].clientY;
+    const dx=x-lastX, dy=y-lastY;
+    lastX=x; lastY=y;
+    const sens=0.0030;
+    input.yaw   -= dx*sens;
+    input.pitch -= dy*sens;
+    input.pitch = Math.max(-0.85, Math.min(0.55, input.pitch));
+  }, {passive:true});
+  renderer.domElement.addEventListener("touchend", ()=>touchActive=false, {passive:true});
+
+  // =========================
+  // Smooth movement (NO diagonal jank)
+  // =========================
+  const clock = new THREE.Clock();
+  let accumulator = 0;
+  const FIXED_DT = 1/120;
+
+  const v = new THREE.Vector3();
+  const wish = new THREE.Vector3();
+  const move = new THREE.Vector3();
+  const up = new THREE.Vector3(0,1,0);
+  const camForward = new THREE.Vector3();
+  const camRight = new THREE.Vector3();
+  const targetQ = new THREE.Quaternion();
+
+  function expDamp(a,b,lambda,dt){
+    return THREE.MathUtils.lerp(a,b,1 - Math.exp(-lambda*dt));
+  }
+
+  // Wide cinematic camera rig (stable)
+  const camPos = new THREE.Vector3(0, 10, 22);
+  const camTarget = new THREE.Vector3(0, 1.8, 0);
+
+  function updateCamera(dt){
+    const dist = 20.0;     // WIDE
+    const baseH = 9.0;     // HIGH
+    const offset = new THREE.Vector3(
+      Math.sin(input.yaw) * dist,
+      baseH + input.pitch * 6.0,
+      Math.cos(input.yaw) * dist
+    );
+
+    const desiredPos = player.position.clone().add(offset);
+    const desiredTarget = player.position.clone().add(new THREE.Vector3(0, 1.8, 0));
+
+    camPos.x = expDamp(camPos.x, desiredPos.x, 8.0, dt);
+    camPos.y = expDamp(camPos.y, desiredPos.y, 8.0, dt);
+    camPos.z = expDamp(camPos.z, desiredPos.z, 8.0, dt);
+
+    camTarget.x = expDamp(camTarget.x, desiredTarget.x, 11.0, dt);
+    camTarget.y = expDamp(camTarget.y, desiredTarget.y, 11.0, dt);
+    camTarget.z = expDamp(camTarget.z, desiredTarget.z, 11.0, dt);
+
+    camera.position.copy(camPos);
+    camera.lookAt(camTarget);
+  }
+
+  // =========================
+  // Breakables + collectibles (CLEAR)
+  // =========================
+  const breakables = [];
+  const pickups = [];
+
+  function spawnCrate(x,z){
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5), toonMat(0x7b5630));
+    crate.position.set(x, 0.75, z);
+    addOutline(crate, 1.07);
+    crate.userData.hp = 2;
+    dungeonGroup.add(crate);
+    breakables.push(crate);
+
+    // subtle ground ring for readability
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.95, 1.18, 26),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent:true, opacity:0.12, side:THREE.DoubleSide })
+    );
+    ring.rotation.x = -Math.PI/2;
+    ring.position.set(x, 0.04, z);
+    dungeonGroup.add(ring);
+    crate.userData.ring = ring;
+  }
+
+  for (let i=0;i<12;i++){
+    spawnCrate((Math.random()-0.5)*22, -200 + (Math.random()-0.5)*22);
+  }
+
+  // Create a bright, anime-style pickup sprite (procedural canvas)
+  function makePickupSprite(hex){
+    const s=256;
+    const c=document.createElement("canvas"); c.width=s; c.height=s;
+    const ctx=c.getContext("2d");
+    const cx=s/2, cy=s/2;
+
+    // outer glow
+    const g1=ctx.createRadialGradient(cx,cy, 10, cx,cy, 120);
+    g1.addColorStop(0, "rgba(255,255,255,0.70)");
+    g1.addColorStop(0.35, `rgba(${(hex>>16)&255},${(hex>>8)&255},${hex&255},0.40)`);
+    g1.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle=g1; ctx.beginPath(); ctx.arc(cx,cy, 120,0,Math.PI*2); ctx.fill();
+
+    // core orb
+    const g2=ctx.createRadialGradient(cx-10,cy-14, 6, cx,cy, 52);
+    g2.addColorStop(0, "rgba(255,255,255,0.95)");
+    g2.addColorStop(0.35, `rgba(${(hex>>16)&255},${(hex>>8)&255},${hex&255},0.95)`);
+    g2.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(cx,cy, 52,0,Math.PI*2); ctx.fill();
+
+    // sparkles
+    ctx.strokeStyle="rgba(255,255,255,0.55)";
+    ctx.lineWidth=4; ctx.lineCap="round";
+    for (let i=0;i<6;i++){
+      const a=i*(Math.PI/3);
+      const r1=70, r2=92;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1);
+      ctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2);
+      ctx.stroke();
+    }
+
+    const tex=new THREE.CanvasTexture(c);
+    tex.colorSpace=THREE.SRGBColorSpace;
+    tex.minFilter=THREE.LinearFilter;
+    tex.magFilter=THREE.LinearFilter;
+    return tex;
+  }
+
+  const woodSpriteTex = makePickupSprite(0x66f2b9);
+  const stoneSpriteTex = makePickupSprite(0xffd066);
+
+  function spawnPickup(type, x,z){
+    const tex = (type==="wood") ? woodSpriteTex : stoneSpriteTex;
+    const sprMat = new THREE.SpriteMaterial({ map: tex, transparent:true, opacity:1.0, depthWrite:false });
+    const spr = new THREE.Sprite(sprMat);
+    spr.position.set(x, 1.35, z);
+    spr.scale.set(1.8, 1.8, 1.8);
+    dungeonGroup.add(spr);
+
+    const light = new THREE.PointLight(type==="wood" ? 0x66f2b9 : 0xffd066, 0.9, 14);
+    light.position.set(x, 1.7, z);
+    dungeonGroup.add(light);
+
+    pickups.push({ type, spr, light, t: Math.random()*10 });
+  }
+
+  // =========================
+  // Attack (works: Space / Click / Button)
+  // =========================
+  let attackCd = 0;
+
+  function doAttack(){
+    if (attackCd > 0) return;
+    attackCd = 0.22;
+
+    // anime slash arc
+    const arc = new THREE.Mesh(
+      new THREE.RingGeometry(1.4, 2.2, 32, 1, 0.2, Math.PI*1.25),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent:true, opacity:0.40, side:THREE.DoubleSide, depthWrite:false })
+    );
+    arc.rotation.x = -Math.PI/2;
+    arc.position.set(player.position.x, 0.06, player.position.z);
+    scene.add(arc);
+
+    const t0 = performance.now();
+    (function fade(){
+      const k = (performance.now() - t0) / 180;
+      arc.material.opacity = Math.max(0, 0.40 * (1-k));
+      arc.scale.setScalar(1 + k*0.18);
+      if (k < 1) requestAnimationFrame(fade);
+      else { scene.remove(arc); arc.geometry.dispose(); arc.material.dispose(); }
+    })();
+
+    // hit nearby crates (only in dungeon)
+    if (GAME.zone !== "dungeon") return;
+
+    const hitR2 = 2.9 * 2.9;
+    for (let i=breakables.length-1; i>=0; i--){
+      const b = breakables[i];
+      if (!b.parent) { breakables.splice(i,1); continue; }
+      const dx = b.position.x - player.position.x;
+      const dz = b.position.z - player.position.z;
+      if (dx*dx + dz*dz <= hitR2){
+        b.userData.hp -= 1;
+
+        // micro shake
+        b.position.x += (Math.random()<0.5?-0.14:0.14);
+        b.position.z += (Math.random()<0.5?-0.14:0.14);
+
+        if (b.userData.hp <= 0){
+          // drops
+          spawnPickup("wood", b.position.x + (Math.random()-0.5)*0.8, b.position.z + (Math.random()-0.5)*0.8);
+          if (Math.random() < 0.65) spawnPickup("stone", b.position.x + (Math.random()-0.5)*0.8, b.position.z + (Math.random()-0.5)*0.8);
+
+          if (b.userData.ring) dungeonGroup.remove(b.userData.ring);
+          dungeonGroup.remove(b);
+          breakables.splice(i,1);
+        }
+      }
+    }
+  }
+
+  addEventListener("mousedown", (e)=>{ if (e.button===0) doAttack(); });
+  addEventListener("keydown", (e)=>{ if (e.code==="Space"){ e.preventDefault(); doAttack(); }});
+  ui.attackBtn.addEventListener("click", ()=>doAttack());
+  ui.attackBtn.addEventListener("touchstart", (e)=>{ e.preventDefault(); doAttack(); }, {passive:false});
+
+  // =========================
+  // Zone transitions: Start → Dungeon via gate
+  // =========================
+  const gateTrigger = { x: gate.position.x, z: gate.position.z, r: 4.5 };
+  const dungeonExitTrigger = { x: 0, z: -120, r: 5.0 };
+
+  function setZone(next){
+    if (GAME.zone === next) return;
+    GAME.zone = next;
+
+    if (next === "dungeon"){
+      startGroup.visible = false;
+      dungeonGroup.visible = true;
+      scene.fog.color.setHex(0x04060d);
+      scene.fog.near = 14;
+      scene.fog.far = 95;
+      showToast("Entered the dungeon.");
+    } else {
+      startGroup.visible = true;
+      dungeonGroup.visible = false;
+      scene.fog.color.setHex(0x070A12);
+      scene.fog.near = 35;
+      scene.fog.far = 170;
+      showToast("Returned to start.");
+    }
+    syncUI();
+  }
+
+  // =========================
+  // Simulation step
+  // =========================
+  function step(dt){
+    // animate portal texture
+    portalTexObj.draw(clock.elapsedTime);
+    portalTexObj.tex.needsUpdate = true;
+
+    // attack cooldown
+    attackCd = Math.max(0, attackCd - dt);
+
+    // buddy bob
+    buddy.position.y = 1.75 + Math.sin(clock.elapsedTime*3.2)*0.06;
+
+    // movement input
+    const sprint = input.keys.has("shift");
+    const maxSpeed = sprint ? 10.3 : 7.6;
+
+    move.set(0,0,0);
+    if (input.keys.has("w") || input.keys.has("arrowup")) move.z -= 1;
+    if (input.keys.has("s") || input.keys.has("arrowdown")) move.z += 1;
+    if (input.keys.has("a") || input.keys.has("arrowleft")) move.x -= 1;
+    if (input.keys.has("d") || input.keys.has("arrowright")) move.x += 1;
+    if (move.lengthSq() > 0) move.normalize();
+
+    // movement relative to yaw (this is what removes direction jank)
+    camForward.set(Math.sin(input.yaw), 0, Math.cos(input.yaw)).normalize();
+    camRight.crossVectors(camForward, up).normalize();
+
+    wish.set(0,0,0)
+      .addScaledVector(camRight, move.x)
+      .addScaledVector(camForward, move.z)
+      .multiplyScalar(maxSpeed);
+
+    // smooth accel/decay (controller feel)
+    const accel = 22.0;
+    v.x = expDamp(v.x, wish.x, accel, dt);
+    v.z = expDamp(v.z, wish.z, accel, dt);
+
+    player.position.x += v.x * dt;
+    player.position.z += v.z * dt;
+
+    // smooth facing direction based on actual velocity
+    const planar = Math.hypot(v.x, v.z);
+    if (planar > 0.22){
+      const faceYaw = Math.atan2(v.x, v.z);
+      targetQ.setFromAxisAngle(up, faceYaw);
+      player.quaternion.slerp(targetQ, 1 - Math.exp(-18.0 * dt));
+    }
+
+    // zone bounds + triggers
+    if (GAME.zone === "start"){
+      player.position.x = THREE.MathUtils.clamp(player.position.x, -80, 80);
+      player.position.z = THREE.MathUtils.clamp(player.position.z, -95, 75);
+
+      // gate trigger
+      const dx = player.position.x - gateTrigger.x;
+      const dz = player.position.z - gateTrigger.z;
+      if (dx*dx + dz*dz < gateTrigger.r*gateTrigger.r){
+        player.position.set(0,0,-135);
+        setZone("dungeon");
+        pushFeed("🌀", "Entered the dungeon.");
+      }
+    } else {
+      player.position.x = THREE.MathUtils.clamp(player.position.x, -28, 28);
+      player.position.z = THREE.MathUtils.clamp(player.position.z, -240, -115);
+
+      // dungeon exit trigger (walk back up corridor)
+      const dx = player.position.x - dungeonExitTrigger.x;
+      const dz = player.position.z - dungeonExitTrigger.z;
+      if (dx*dx + dz*dz < dungeonExitTrigger.r*dungeonExitTrigger.r){
+        player.position.set(0,0,-55);
+        setZone("start");
+      }
+
+      // pickups update (VERY clear + magnet)
+      const MAGNET_R = 2.6;
+      for (let i=pickups.length-1; i>=0; i--){
+        const p = pickups[i];
+        p.t += dt;
+
+        // bob + rotate feel
+        p.spr.position.y = 1.35 + Math.sin(p.t*3.4)*0.16;
+        p.spr.material.opacity = 0.92 + Math.sin(p.t*2.2)*0.08;
+        p.light.position.set(p.spr.position.x, p.spr.position.y + 0.35, p.spr.position.z);
+
+        const px = p.spr.position.x, pz = p.spr.position.z;
+        const ddx = player.position.x - px;
+        const ddz = player.position.z - pz;
+        const d2 = ddx*ddx + ddz*ddz;
+
+        if (d2 < MAGNET_R*MAGNET_R){
+          // magnet pull
+          p.spr.position.x = expDamp(p.spr.position.x, player.position.x, 18.0, dt);
+          p.spr.position.z = expDamp(p.spr.position.z, player.position.z, 18.0, dt);
+
+          if (d2 < 0.45*0.45){
+            if (p.type === "wood"){ GAME.inv.wood += 1; pushFeed("🪵", "Picked up wood. +1"); }
+            else { GAME.inv.stone += 1; pushFeed("🪨", "Picked up stone. +1"); }
+
+            dungeonGroup.remove(p.spr);
+            dungeonGroup.remove(p.light);
+            p.spr.material.dispose();
+            pickups.splice(i,1);
+            syncUI();
+          }
+        }
+      }
+    }
+
+    updateCamera(dt);
+  }
+
+  // =========================
+  // Main loop (fixed timestep)
+  // =========================
+  showToast("Click the game to enable mouse look. Walk to the glowing gate.");
+  const mainClock = new THREE.Clock();
+
+  function tick(){
+    const frameDt = Math.min(0.05, mainClock.getDelta());
+    accumulator += frameDt;
+
+    while (accumulator >= FIXED_DT){
+      step(FIXED_DT);
+      accumulator -= FIXED_DT;
+    }
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(tick);
+  }
+  tick();
+</script>
+</body>
+</html>
