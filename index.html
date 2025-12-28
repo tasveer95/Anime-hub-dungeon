@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Anime Hub → Dungeon (Babylon Working)</title>
+  <title>Anime Hub → Dungeon (Babylon Improved)</title>
   <style>
     :root{
       --glass: rgba(10,14,26,.72);
@@ -12,6 +12,7 @@
       --muted: rgba(238,243,255,.72);
       --good: rgba(102,242,185,.95);
       --gold: rgba(255,208,102,.95);
+      --danger: rgba(255,118,118,.95);
       --shadow: 0 18px 55px rgba(0,0,0,.45);
       --r: 18px;
     }
@@ -20,7 +21,7 @@
     canvas{position:absolute;inset:0;width:100vw;height:100vh;display:block;}
 
     #hud{
-      position:absolute;left:16px;top:16px;width:380px;z-index:5;
+      position:absolute;left:16px;top:16px;width:400px;z-index:5;
       background:var(--glass);border:1px solid var(--stroke);
       border-radius:var(--r);padding:14px;backdrop-filter:blur(10px);
       box-shadow:var(--shadow);user-select:none;
@@ -33,11 +34,12 @@
     .hpBar{height:12px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid rgba(255,255,255,.10)}
     .hpFill{height:100%;width:100%;background:linear-gradient(90deg, rgba(255,90,90,.95), rgba(102,242,185,.95));}
     .cards{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
-    .card{flex:1;min-width:170px;padding:10px;border-radius:14px;border:1px solid var(--stroke);background:rgba(255,255,255,.05)}
+    .card{flex:1;min-width:180px;padding:10px;border-radius:14px;border:1px solid var(--stroke);background:rgba(255,255,255,.05)}
     .k{font-size:12px;color:var(--muted);margin-bottom:4px}
     .v{font-size:14px;font-weight:800;display:flex;gap:8px;flex-wrap:wrap}
     .good{color:var(--good);font-weight:900}
     .gold{color:var(--gold);font-weight:900}
+    .danger{color:var(--danger);font-weight:900}
     .hint{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35}
 
     #topRight{
@@ -46,7 +48,7 @@
     }
     .counter{
       display:flex;align-items:center;justify-content:space-between;
-      min-width:190px;padding:10px 12px;border-radius:16px;
+      min-width:200px;padding:10px 12px;border-radius:16px;
       border:1px solid var(--stroke);background:var(--glass);backdrop-filter:blur(10px);
       box-shadow:var(--shadow);
     }
@@ -84,7 +86,7 @@
 
     #toast{
       position:absolute;left:50%;top:16px;transform:translateX(-50%);z-index:6;
-      width:min(720px, calc(100vw - 30px));
+      width:min(820px, calc(100vw - 30px));
       padding:10px 14px;border-radius:16px;border:1px solid var(--stroke);
       background:rgba(10,14,26,.65);backdrop-filter:blur(10px);
       box-shadow:var(--shadow);text-align:center;
@@ -123,15 +125,14 @@
       <div class="card">
         <div class="k">Controls</div>
         <div class="v">
-          <span class="good">WASD</span> /
-          <span class="good">Arrows</span>
+          <span class="good">WASD</span>/<span class="good">Arrows</span>
           <span class="good">Shift</span> Sprint
         </div>
       </div>
     </div>
 
     <div class="hint">
-      Attack: <span class="good">Space / Click / Tap</span><br/>
+      Attack: <span class="good">Space / Click / Tap</span> · Camera: <span class="good">Mouse drag</span><br/>
       Walk into the <span class="gold">glowing portal</span> to reach the dungeon.
     </div>
   </div>
@@ -139,14 +140,14 @@
   <div id="topRight">
     <div class="counter">
       <div class="counterLeft">
-        <span class="icon" id="woodIcon">🪵</span>
+        <span class="icon">🪵</span>
         <div class="count" id="woodCount">0</div>
       </div>
       <div class="plus">+</div>
     </div>
     <div class="counter">
       <div class="counterLeft">
-        <span class="icon" id="stoneIcon">🪨</span>
+        <span class="icon">🪨</span>
         <div class="count" id="stoneCount">0</div>
       </div>
       <div class="plus">+</div>
@@ -162,7 +163,6 @@
   </div>
 </div>
 
-<!-- Babylon - stable (NO modules) -->
 <script src="https://cdn.babylonjs.com/babylon.js"></script>
 
 <script>
@@ -190,16 +190,14 @@
     ui.toast.textContent = "❌ " + msg;
     ui.toast.classList.add("show");
   }
-
   window.addEventListener("error", (e)=>fatal(e.message || "Unknown JS error"));
   window.addEventListener("unhandledrejection", (e)=>fatal((e.reason && e.reason.message) ? e.reason.message : "Promise error"));
 
-  if (!window.BABYLON){ fatal("Babylon.js failed to load (CDN blocked). Disable adblock / shields and reload."); return; }
+  if (!window.BABYLON){ fatal("Babylon.js failed to load (CDN blocked). Disable adblock/shields and reload."); return; }
   if (!BABYLON.Engine.isSupported()){ fatal("WebGL not supported/disabled. Enable hardware acceleration and relaunch Chrome."); return; }
 
   // ===== GAME STATE =====
   const GAME = { zone:"start", hp:10, hpMax:10, wood:0, stone:0 };
-
   function syncUI(){
     ui.zoneChip.textContent = "Zone: " + (GAME.zone === "start" ? "Start" : "Dungeon");
     ui.hpText.textContent = `${GAME.hp}/${GAME.hpMax}`;
@@ -217,12 +215,11 @@
 
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = new BABYLON.Color4(0.03, 0.04, 0.08, 1);
-
   scene.collisionsEnabled = true;
 
-  // Fog (soft cinematic)
+  // Fog cinematic
   scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-  scene.fogDensity = 0.012;
+  scene.fogDensity = 0.010;
   scene.fogColor = new BABYLON.Color3(0.05,0.08,0.16);
 
   // Lights
@@ -242,28 +239,25 @@
     return m;
   }
 
-  // Camera (ArcRotate = stable, smooth, beginner-proof)
+  // ===== 3rd-person follow camera rig (smooth) =====
+  // We still use ArcRotate for easy mouse drag, but we *drive* it toward target values for "follow cam feel".
   const camera = new BABYLON.ArcRotateCamera(
     "cam",
     BABYLON.Tools.ToRadians(180),
     BABYLON.Tools.ToRadians(62),
-    24,
+    22,
     new BABYLON.Vector3(0,1.6,0),
     scene
   );
   camera.lowerRadiusLimit = 14;
   camera.upperRadiusLimit = 34;
-  camera.inertia = 0.85;
-  camera.angularSensibilityX = 2800;
-  camera.angularSensibilityY = 2800;
   camera.panningSensibility = 0;
+  camera.inertia = 0.0; // we do our own smoothing
   camera.attachControl(canvas, true);
 
-  // Optional pointer lock (helps mouse look feel)
-  canvas.addEventListener("click", () => {
-    canvas.focus?.();
-    canvas.requestPointerLock?.();
-  });
+  // Desired camera settings (cinematic follow)
+  const camDesired = { alpha: camera.alpha, beta: camera.beta, radius: camera.radius };
+  const camSmooth = 1 - Math.exp(-10 * 0.016);
 
   // ===== WORLD ROOTS =====
   const startRoot = new BABYLON.TransformNode("startRoot", scene);
@@ -274,9 +268,9 @@
   const startGround = BABYLON.MeshBuilder.CreateGround("startGround", { width:220, height:220 }, scene);
   startGround.parent = startRoot;
   startGround.checkCollisions = true;
-  startGround.material = flatMat("#1b2a55"); // brighter so you can SEE it
+  startGround.material = flatMat("#1b2a55");
 
-  // Big marker so you can tell movement is working instantly
+  // Visual anchors (helps user immediately)
   const startMarker = BABYLON.MeshBuilder.CreateBox("startMarker", { size:1.2 }, scene);
   startMarker.parent = startRoot;
   startMarker.position = new BABYLON.Vector3(0, 0.6, 28);
@@ -299,15 +293,15 @@
   portal.position.y = 3.6;
 
   const portalMat = flatMat("#0a1020");
-  portalMat.emissiveColor = BABYLON.Color3.FromHexString("#66f2b9").scale(2.2); // VERY visible
+  portalMat.emissiveColor = BABYLON.Color3.FromHexString("#66f2b9").scale(2.1);
   portal.material = portalMat;
 
   const portalLight = new BABYLON.PointLight("portalLight", new BABYLON.Vector3(0,3.6,-70), scene);
   portalLight.diffuse = BABYLON.Color3.FromHexString("#66f2b9");
   portalLight.intensity = 1.4;
-  portalLight.range = 28;
+  portalLight.range = 30;
 
-  // ===== DUNGEON ZONE =====
+  // ===== DUNGEON =====
   const dungeonFloor = BABYLON.MeshBuilder.CreateGround("dungeonFloor", { width:110, height:240 }, scene);
   dungeonFloor.parent = dungeonRoot;
   dungeonFloor.position = new BABYLON.Vector3(0,0,-140);
@@ -332,12 +326,20 @@
   player.checkCollisions = true;
   player.ellipsoid = new BABYLON.Vector3(0.55, 0.95, 0.55);
   player.ellipsoidOffset = new BABYLON.Vector3(0, 0.95, 0);
-  camera.lockedTarget = player;
+  camera.target = player.position.clone();
 
   const head = BABYLON.MeshBuilder.CreateSphere("head",{ diameter:0.85, segments:16 }, scene);
   head.parent = player;
   head.position = new BABYLON.Vector3(0, 0.95, 0);
   head.material = flatMat("#A9C2FF");
+
+  // tiny buddy
+  const buddy = BABYLON.MeshBuilder.CreateSphere("buddy",{ diameter:0.35, segments:12 }, scene);
+  buddy.parent = player;
+  buddy.position = new BABYLON.Vector3(-0.9, 0.55, 0.25);
+  const buddyMat = flatMat("#66f2b9");
+  buddyMat.emissiveColor = BABYLON.Color3.FromHexString("#66f2b9").scale(0.8);
+  buddy.material = buddyMat;
 
   // ===== BREAKABLES + LOOT =====
   const breakables = [];
@@ -354,28 +356,27 @@
     return c;
   }
 
-  // One crate in START so you can test attack immediately
+  // test crate in start
   spawnCrate(startRoot, 4, 34);
-
-  // Several crates in dungeon
-  for (let i=0;i<10;i++){
+  // dungeon crates
+  for (let i=0;i<12;i++){
     spawnCrate(dungeonRoot, (Math.random()-0.5)*22, -200 + (Math.random()-0.5)*22);
   }
 
-  function spawnLoot(type, x, z){
+  function spawnLoot(type, x, z, root){
     const s = BABYLON.MeshBuilder.CreateSphere("loot",{ diameter:0.65, segments:12 }, scene);
     s.position = new BABYLON.Vector3(x, 1.35, z);
     const mat = flatMat(type==="wood" ? "#66f2b9" : "#ffd066");
     mat.emissiveColor = BABYLON.Color3.FromHexString(type==="wood" ? "#66f2b9" : "#ffd066").scale(1.25);
     s.material = mat;
-    s.parent = dungeonRoot; // loot only matters in dungeon; fine if we drop in start too, it will still render.
+    s.parent = root;
 
     const l = new BABYLON.PointLight("lootLight", s.position.clone(), scene);
     l.diffuse = BABYLON.Color3.FromHexString(type==="wood" ? "#66f2b9" : "#ffd066");
     l.intensity = 0.95;
     l.range = 14;
 
-    loot.push({ type, mesh:s, light:l, t:Math.random()*10 });
+    loot.push({ type, mesh:s, light:l, t:Math.random()*10, root });
   }
 
   // ===== INPUT =====
@@ -383,67 +384,136 @@
   window.addEventListener("keydown", (e)=>keys.add(e.key.toLowerCase()));
   window.addEventListener("keyup", (e)=>keys.delete(e.key.toLowerCase()));
 
-  // ===== ATTACK =====
+  // ===== MOVEMENT (PROPER, NOT REVERSED) =====
+  // We use a smoothed velocity to remove "jank".
+  let vx = 0, vz = 0;
+
+  function damp(cur, target, lambda, dt){
+    return cur + (target-cur) * (1 - Math.exp(-lambda*dt));
+  }
+
+  // ===== ATTACK (cone in front + slash VFX) =====
   let attackCd = 0;
+
+  function slashVFX(){
+    // A quick ring arc in front of player
+    const arc = BABYLON.MeshBuilder.CreateTorus("slash",{ diameter:3.2, thickness:0.14, tessellation:48 }, scene);
+    arc.position = player.position.add(new BABYLON.Vector3(
+      Math.sin(player.rotation.y) * 1.2,
+      1.0,
+      Math.cos(player.rotation.y) * 1.2
+    ));
+    arc.rotation = new BABYLON.Vector3(Math.PI/2, player.rotation.y, 0);
+
+    const m = flatMat("#ffffff");
+    m.emissiveColor = new BABYLON.Color3(1,1,1).scale(1.2);
+    m.alpha = 0.55;
+    arc.material = m;
+
+    let t = 0;
+    const obs = scene.onBeforeRenderObservable.add(() => {
+      const dt = engine.getDeltaTime()/1000;
+      t += dt;
+      arc.scaling.scaleInPlace(1 + dt*1.8);
+      m.alpha = Math.max(0, 0.55*(1 - t/0.18));
+      if (t >= 0.18){
+        scene.onBeforeRenderObservable.remove(obs);
+        arc.dispose();
+        m.dispose();
+      }
+    });
+  }
 
   function doAttack(){
     if (attackCd > 0) return;
-    attackCd = 0.22;
+    attackCd = 0.24;
+    slashVFX();
 
-    // hit nearby crates (both zones so you can test instantly)
-    const hitR = 2.9;
+    // Attack cone: forward only
+    const range = 3.0;
+    const coneCos = Math.cos(BABYLON.Tools.ToRadians(65)); // ~65° cone
+
+    const fwd = new BABYLON.Vector3(
+      Math.sin(player.rotation.y),
+      0,
+      Math.cos(player.rotation.y)
+    ).normalize();
+
+    const activeRoot = (GAME.zone === "start") ? startRoot : dungeonRoot;
+
     for (let i=breakables.length-1;i>=0;i--){
       const b = breakables[i];
       if (!b || b.isDisposed()){ breakables.splice(i,1); continue; }
+      if (b.parent !== activeRoot) continue;
 
-      // Only hit crates in the currently enabled zone OR visible
-      if (GAME.zone === "start" && b.parent !== startRoot) continue;
-      if (GAME.zone === "dungeon" && b.parent !== dungeonRoot) continue;
+      const to = b.position.subtract(player.position);
+      to.y = 0;
+      const dist = to.length();
+      if (dist > range) continue;
 
-      const d = BABYLON.Vector3.Distance(player.position, b.position);
-      if (d <= hitR){
-        b.metadata.hp -= 1;
-        b.position.x += (Math.random()<0.5?-0.15:0.15);
-        b.position.z += (Math.random()<0.5?-0.15:0.15);
+      const dir = to.normalize();
+      const dot = BABYLON.Vector3.Dot(fwd, dir);
+      if (dot < coneCos) continue; // must be in front cone
 
-        if (b.metadata.hp <= 0){
-          const bx = b.position.x, bz = b.position.z;
+      b.metadata.hp -= 1;
 
-          // loot drop (drops even in start for testing; only gets collected in dungeon loop but still shows)
-          spawnLoot("wood", bx + (Math.random()-0.5)*0.8, bz + (Math.random()-0.5)*0.8);
-          if (Math.random() < 0.65) spawnLoot("stone", bx + (Math.random()-0.5)*0.8, bz + (Math.random()-0.5)*0.8);
+      // hit feedback
+      b.position.x += (Math.random()<0.5?-0.16:0.16);
+      b.position.z += (Math.random()<0.5?-0.16:0.16);
 
-          b.dispose();
-          breakables.splice(i,1);
-        }
+      if (b.metadata.hp <= 0){
+        const bx=b.position.x, bz=b.position.z;
+
+        // drop loot into the CURRENT zone root
+        spawnLoot("wood", bx+(Math.random()-0.5)*0.8, bz+(Math.random()-0.5)*0.8, activeRoot);
+        if (Math.random()<0.65) spawnLoot("stone", bx+(Math.random()-0.5)*0.8, bz+(Math.random()-0.5)*0.8, activeRoot);
+
+        b.dispose();
+        breakables.splice(i,1);
       }
     }
   }
 
   window.addEventListener("keydown", (e)=>{ if (e.code==="Space"){ e.preventDefault(); doAttack(); }});
   window.addEventListener("pointerdown", (e)=>{ if (e.button === 0) doAttack(); });
-
   ui.attackBtn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); doAttack(); });
 
   // ===== ZONE SWITCH =====
-  function enterDungeon(){
-    GAME.zone = "dungeon";
-    startRoot.setEnabled(false);
-    dungeonRoot.setEnabled(true);
+  function setZone(zone){
+    if (GAME.zone === zone) return;
+    GAME.zone = zone;
 
-    // fog mood shift
-    scene.fogDensity = 0.017;
-    scene.fogColor = new BABYLON.Color3(0.02,0.03,0.07);
+    if (zone === "dungeon"){
+      startRoot.setEnabled(false);
+      dungeonRoot.setEnabled(true);
 
-    // move player to dungeon entrance
-    player.position = new BABYLON.Vector3(0, 1.0, -135);
+      // mood shift
+      scene.fogDensity = 0.017;
+      scene.fogColor = new BABYLON.Color3(0.02,0.03,0.07);
 
+      player.position = new BABYLON.Vector3(0, 1.0, -135);
+      camDesired.radius = 22;
+      camDesired.beta = BABYLON.Tools.ToRadians(62);
+
+      showToast("Entered the dungeon.");
+    } else {
+      startRoot.setEnabled(true);
+      dungeonRoot.setEnabled(false);
+
+      scene.fogDensity = 0.010;
+      scene.fogColor = new BABYLON.Color3(0.05,0.08,0.16);
+
+      player.position = new BABYLON.Vector3(0, 1.0, 40);
+      camDesired.radius = 22;
+      camDesired.beta = BABYLON.Tools.ToRadians(62);
+
+      showToast("Back in the hub.");
+    }
     syncUI();
-    showToast("Entered the dungeon.");
   }
 
-  // ===== LOOP =====
-  showToast("Move: WASD / Arrows. Attack: Space / Click. Walk into the portal.");
+  // ===== MAIN LOOP =====
+  showToast("Move: WASD/Arrows. Attack: Space/Click. Walk into the glowing portal.");
   let last = performance.now();
 
   scene.onBeforeRenderObservable.add(() => {
@@ -451,82 +521,102 @@
     const dt = Math.min(0.05, (now - last)/1000);
     last = now;
 
-    // Portal pulse (very visible)
+    // Animate portal pulse
     portalMat.emissiveColor = BABYLON.Color3.FromHexString("#66f2b9").scale(1.6 + 0.9*Math.sin(now*0.003));
+
+    // Buddy bob
+    buddy.position.y = 0.55 + Math.sin(now*0.006)*0.06;
 
     // attack cooldown
     attackCd = Math.max(0, attackCd - dt);
 
-    // Movement (correct, non-reversed, works with arrows)
-    const sprint = keys.has("shift");
-    const speed = sprint ? 10.2 : 7.6;
-
+    // Read input (FIXED: NOT REVERSED)
+    // Left = left, Up = forward
     let mx=0, mz=0;
     if (keys.has("a") || keys.has("arrowleft"))  mx -= 1;
     if (keys.has("d") || keys.has("arrowright")) mx += 1;
-    if (keys.has("w") || keys.has("arrowup"))    mz += 1; // forward
-    if (keys.has("s") || keys.has("arrowdown"))  mz -= 1; // backward
+    if (keys.has("w") || keys.has("arrowup"))    mz += 1;
+    if (keys.has("s") || keys.has("arrowdown"))  mz -= 1;
 
     const len = Math.hypot(mx,mz);
     if (len > 0){ mx/=len; mz/=len; }
 
+    const sprint = keys.has("shift");
+    const speed = sprint ? 10.4 : 7.8;
+
+    // Camera-relative move vector (ArcRotate alpha)
     const yaw = camera.alpha;
 
-    // forward on ground plane (ArcRotate faces toward target)
+    // Forward direction on ground plane (where camera "faces")
     const forward = new BABYLON.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
     const right   = new BABYLON.Vector3(forward.z, 0, -forward.x).normalize();
 
     const wish = right.scale(mx).add(forward.scale(mz)).scale(speed);
 
-    player.moveWithCollisions(new BABYLON.Vector3(wish.x*dt, 0, wish.z*dt));
+    // Smooth velocity (secrets: eliminates drift + feels console-like)
+    vx = damp(vx, wish.x, 18.0, dt);
+    vz = damp(vz, wish.z, 18.0, dt);
 
-    // Face travel direction
-    if (len > 0.12){
-      const face = Math.atan2(wish.x, wish.z);
-      player.rotation.y = BABYLON.Scalar.LerpAngle(player.rotation.y, face, 0.18);
+    player.moveWithCollisions(new BABYLON.Vector3(vx*dt, 0, vz*dt));
+
+    // Face travel direction (only if moving)
+    const vlen = Math.hypot(vx,vz);
+    if (vlen > 0.3){
+      const face = Math.atan2(vx, vz);
+      player.rotation.y = BABYLON.Scalar.LerpAngle(player.rotation.y, face, 0.22);
     }
 
-    // Zone trigger
+    // True follow camera feel: we gently steer camera alpha behind player
+    // (keeps cinematic framing while still allowing mouse drag)
+    const followStrength = 0.035;
+    camDesired.alpha = BABYLON.Scalar.LerpAngle(camDesired.alpha, player.rotation.y + Math.PI, followStrength);
+
+    // Apply smoothing to camera
+    camera.alpha  = BABYLON.Scalar.LerpAngle(camera.alpha, camDesired.alpha, 0.12);
+    camera.beta   = BABYLON.Scalar.Lerp(camera.beta, camDesired.beta, 0.12);
+    camera.radius = BABYLON.Scalar.Lerp(camera.radius, camDesired.radius, 0.12);
+    camera.target = BABYLON.Vector3.Lerp(camera.target, player.position.add(new BABYLON.Vector3(0,1.6,0)), 0.18);
+
+    // Portal trigger
     if (GAME.zone === "start"){
       const gx = gate.getAbsolutePosition().x;
       const gz = gate.getAbsolutePosition().z;
       const dx = player.position.x - gx;
       const dz = player.position.z - gz;
-      if (dx*dx + dz*dz < 4.8*4.8){
-        enterDungeon();
+      if (dx*dx + dz*dz < 4.7*4.7){
+        setZone("dungeon");
       }
     }
 
-    // Loot magnet + pickup (only in dungeon)
-    if (GAME.zone === "dungeon"){
-      const MAG = 2.6;
+    // Loot magnet + pickup (only collects in CURRENT zone)
+    const activeRoot = (GAME.zone === "start") ? startRoot : dungeonRoot;
+    const MAG = 2.7;
 
-      for (let i=loot.length-1;i>=0;i--){
-        const p = loot[i];
-        if (!p.mesh || p.mesh.isDisposed()){ loot.splice(i,1); continue; }
+    for (let i=loot.length-1;i>=0;i--){
+      const p = loot[i];
+      if (!p.mesh || p.mesh.isDisposed()){ loot.splice(i,1); continue; }
 
-        // bob
-        p.t += dt;
-        p.mesh.position.y = 1.35 + Math.sin(p.t*3.2)*0.16;
-        p.light.position.copyFrom(p.mesh.position);
+      // Only magnet/pickup loot in the current root
+      if (p.root !== activeRoot) continue;
 
-        const d = BABYLON.Vector3.Distance(player.position, p.mesh.position);
+      p.t += dt;
+      p.mesh.position.y = 1.35 + Math.sin(p.t*3.2)*0.16;
+      p.light.position.copyFrom(p.mesh.position);
 
-        // magnet
-        if (d < MAG){
-          p.mesh.position.x = BABYLON.Scalar.Lerp(p.mesh.position.x, player.position.x, 0.18);
-          p.mesh.position.z = BABYLON.Scalar.Lerp(p.mesh.position.z, player.position.z, 0.18);
+      const d = BABYLON.Vector3.Distance(player.position, p.mesh.position);
 
-          // collect
-          if (d < 0.55){
-            if (p.type === "wood") GAME.wood += 1;
-            else GAME.stone += 1;
+      if (d < MAG){
+        p.mesh.position.x = BABYLON.Scalar.Lerp(p.mesh.position.x, player.position.x, 0.18);
+        p.mesh.position.z = BABYLON.Scalar.Lerp(p.mesh.position.z, player.position.z, 0.18);
 
-            p.light.dispose();
-            p.mesh.dispose();
-            loot.splice(i,1);
-            syncUI();
-          }
+        if (d < 0.55){
+          if (p.type === "wood") GAME.wood += 1;
+          else GAME.stone += 1;
+
+          p.light.dispose();
+          p.mesh.dispose();
+          loot.splice(i,1);
+          syncUI();
         }
       }
     }
