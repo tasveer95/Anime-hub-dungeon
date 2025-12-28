@@ -345,4 +345,196 @@
 
   function spawnCrate(root, x, z){
     const c = BABYLON.MeshBuilder.CreateBox("crate",{ size:1.6 }, scene);
-    c.position = new BABYLON.
+    c.position = new BABYLON.Vector3(x, 0.8, z);
+    c.material = flatMat("#7b5630");
+    c.checkCollisions = true;
+    c.metadata = { hp: 2 };
+    c.parent = root;
+    breakables.push(c);
+    return c;
+  }
+
+  // One crate in START so you can test attack immediately
+  spawnCrate(startRoot, 4, 34);
+
+  // Several crates in dungeon
+  for (let i=0;i<10;i++){
+    spawnCrate(dungeonRoot, (Math.random()-0.5)*22, -200 + (Math.random()-0.5)*22);
+  }
+
+  function spawnLoot(type, x, z){
+    const s = BABYLON.MeshBuilder.CreateSphere("loot",{ diameter:0.65, segments:12 }, scene);
+    s.position = new BABYLON.Vector3(x, 1.35, z);
+    const mat = flatMat(type==="wood" ? "#66f2b9" : "#ffd066");
+    mat.emissiveColor = BABYLON.Color3.FromHexString(type==="wood" ? "#66f2b9" : "#ffd066").scale(1.25);
+    s.material = mat;
+    s.parent = dungeonRoot; // loot only matters in dungeon; fine if we drop in start too, it will still render.
+
+    const l = new BABYLON.PointLight("lootLight", s.position.clone(), scene);
+    l.diffuse = BABYLON.Color3.FromHexString(type==="wood" ? "#66f2b9" : "#ffd066");
+    l.intensity = 0.95;
+    l.range = 14;
+
+    loot.push({ type, mesh:s, light:l, t:Math.random()*10 });
+  }
+
+  // ===== INPUT =====
+  const keys = new Set();
+  window.addEventListener("keydown", (e)=>keys.add(e.key.toLowerCase()));
+  window.addEventListener("keyup", (e)=>keys.delete(e.key.toLowerCase()));
+
+  // ===== ATTACK =====
+  let attackCd = 0;
+
+  function doAttack(){
+    if (attackCd > 0) return;
+    attackCd = 0.22;
+
+    // hit nearby crates (both zones so you can test instantly)
+    const hitR = 2.9;
+    for (let i=breakables.length-1;i>=0;i--){
+      const b = breakables[i];
+      if (!b || b.isDisposed()){ breakables.splice(i,1); continue; }
+
+      // Only hit crates in the currently enabled zone OR visible
+      if (GAME.zone === "start" && b.parent !== startRoot) continue;
+      if (GAME.zone === "dungeon" && b.parent !== dungeonRoot) continue;
+
+      const d = BABYLON.Vector3.Distance(player.position, b.position);
+      if (d <= hitR){
+        b.metadata.hp -= 1;
+        b.position.x += (Math.random()<0.5?-0.15:0.15);
+        b.position.z += (Math.random()<0.5?-0.15:0.15);
+
+        if (b.metadata.hp <= 0){
+          const bx = b.position.x, bz = b.position.z;
+
+          // loot drop (drops even in start for testing; only gets collected in dungeon loop but still shows)
+          spawnLoot("wood", bx + (Math.random()-0.5)*0.8, bz + (Math.random()-0.5)*0.8);
+          if (Math.random() < 0.65) spawnLoot("stone", bx + (Math.random()-0.5)*0.8, bz + (Math.random()-0.5)*0.8);
+
+          b.dispose();
+          breakables.splice(i,1);
+        }
+      }
+    }
+  }
+
+  window.addEventListener("keydown", (e)=>{ if (e.code==="Space"){ e.preventDefault(); doAttack(); }});
+  window.addEventListener("pointerdown", (e)=>{ if (e.button === 0) doAttack(); });
+
+  ui.attackBtn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); doAttack(); });
+
+  // ===== ZONE SWITCH =====
+  function enterDungeon(){
+    GAME.zone = "dungeon";
+    startRoot.setEnabled(false);
+    dungeonRoot.setEnabled(true);
+
+    // fog mood shift
+    scene.fogDensity = 0.017;
+    scene.fogColor = new BABYLON.Color3(0.02,0.03,0.07);
+
+    // move player to dungeon entrance
+    player.position = new BABYLON.Vector3(0, 1.0, -135);
+
+    syncUI();
+    showToast("Entered the dungeon.");
+  }
+
+  // ===== LOOP =====
+  showToast("Move: WASD / Arrows. Attack: Space / Click. Walk into the portal.");
+  let last = performance.now();
+
+  scene.onBeforeRenderObservable.add(() => {
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - last)/1000);
+    last = now;
+
+    // Portal pulse (very visible)
+    portalMat.emissiveColor = BABYLON.Color3.FromHexString("#66f2b9").scale(1.6 + 0.9*Math.sin(now*0.003));
+
+    // attack cooldown
+    attackCd = Math.max(0, attackCd - dt);
+
+    // Movement (correct, non-reversed, works with arrows)
+    const sprint = keys.has("shift");
+    const speed = sprint ? 10.2 : 7.6;
+
+    let mx=0, mz=0;
+    if (keys.has("a") || keys.has("arrowleft"))  mx -= 1;
+    if (keys.has("d") || keys.has("arrowright")) mx += 1;
+    if (keys.has("w") || keys.has("arrowup"))    mz += 1; // forward
+    if (keys.has("s") || keys.has("arrowdown"))  mz -= 1; // backward
+
+    const len = Math.hypot(mx,mz);
+    if (len > 0){ mx/=len; mz/=len; }
+
+    const yaw = camera.alpha;
+
+    // forward on ground plane (ArcRotate faces toward target)
+    const forward = new BABYLON.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
+    const right   = new BABYLON.Vector3(forward.z, 0, -forward.x).normalize();
+
+    const wish = right.scale(mx).add(forward.scale(mz)).scale(speed);
+
+    player.moveWithCollisions(new BABYLON.Vector3(wish.x*dt, 0, wish.z*dt));
+
+    // Face travel direction
+    if (len > 0.12){
+      const face = Math.atan2(wish.x, wish.z);
+      player.rotation.y = BABYLON.Scalar.LerpAngle(player.rotation.y, face, 0.18);
+    }
+
+    // Zone trigger
+    if (GAME.zone === "start"){
+      const gx = gate.getAbsolutePosition().x;
+      const gz = gate.getAbsolutePosition().z;
+      const dx = player.position.x - gx;
+      const dz = player.position.z - gz;
+      if (dx*dx + dz*dz < 4.8*4.8){
+        enterDungeon();
+      }
+    }
+
+    // Loot magnet + pickup (only in dungeon)
+    if (GAME.zone === "dungeon"){
+      const MAG = 2.6;
+
+      for (let i=loot.length-1;i>=0;i--){
+        const p = loot[i];
+        if (!p.mesh || p.mesh.isDisposed()){ loot.splice(i,1); continue; }
+
+        // bob
+        p.t += dt;
+        p.mesh.position.y = 1.35 + Math.sin(p.t*3.2)*0.16;
+        p.light.position.copyFrom(p.mesh.position);
+
+        const d = BABYLON.Vector3.Distance(player.position, p.mesh.position);
+
+        // magnet
+        if (d < MAG){
+          p.mesh.position.x = BABYLON.Scalar.Lerp(p.mesh.position.x, player.position.x, 0.18);
+          p.mesh.position.z = BABYLON.Scalar.Lerp(p.mesh.position.z, player.position.z, 0.18);
+
+          // collect
+          if (d < 0.55){
+            if (p.type === "wood") GAME.wood += 1;
+            else GAME.stone += 1;
+
+            p.light.dispose();
+            p.mesh.dispose();
+            loot.splice(i,1);
+            syncUI();
+          }
+        }
+      }
+    }
+  });
+
+  engine.runRenderLoop(() => scene.render());
+  window.addEventListener("resize", () => engine.resize());
+})();
+</script>
+</body>
+</html>
