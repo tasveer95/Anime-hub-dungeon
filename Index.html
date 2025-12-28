@@ -3,30 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Anime-Inspired 3D Hub → Dungeon (Playable)</title>
+  <title>Anime Hub → Dungeon (Babylon Prototype)</title>
   <style>
     :root{
       --bg:#070A12;
-      --glass: rgba(10,14,26,0.70);
-      --glass2: rgba(255,255,255,0.06);
+      --glass: rgba(10,14,26,0.72);
       --stroke: rgba(255,255,255,0.14);
       --text: rgba(235,241,255,0.92);
       --muted: rgba(235,241,255,0.68);
       --good: rgba(102,242,185,0.96);
       --gold: rgba(255,208,102,0.96);
-      --danger: rgba(255,118,118,0.96);
       --shadow: 0 18px 55px rgba(0,0,0,0.45);
       --r: 18px;
     }
-    html,body{height:100%; margin:0; background: radial-gradient(1100px 800px at 35% 20%, #203070 0%, var(--bg) 55%); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; overflow:hidden;}
+    html,body{height:100%;margin:0;background: radial-gradient(1100px 800px at 35% 20%, #203070 0%, var(--bg) 55%); color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; overflow:hidden;}
     #wrap{position:relative; width:100vw; height:100vh;}
-    canvas{display:block;}
+    canvas{display:block; width:100vw; height:100vh;}
 
-    /* strict 16:9 letterbox */
-    #barsTop,#barsBot{position:absolute; left:0; width:100%; height:0; background: rgba(0,0,0,0.88); pointer-events:none; z-index:50;}
-    #barsTop{top:0;} #barsBot{bottom:0;}
-
-    /* Left HUD panel */
     #hud{
       position:absolute; left:16px; top:16px; width:360px;
       background: var(--glass);
@@ -36,9 +29,9 @@
       backdrop-filter: blur(10px);
       padding:14px;
       user-select:none;
-      z-index:60;
+      z-index:20;
     }
-    .hudTitle{display:flex; justify-content:space-between; align-items:center; font-weight:800; letter-spacing:0.2px;}
+    .hudTitle{display:flex; justify-content:space-between; align-items:center; font-weight:800;}
     .chip{padding:6px 10px; border-radius:999px; border:1px solid var(--stroke); background: rgba(255,255,255,0.05); color:var(--muted); font-size:12px;}
     .barWrap{margin-top:10px; padding:10px; border-radius:14px; border:1px solid var(--stroke); background: rgba(255,255,255,0.05);}
     .barLabel{font-size:12px; color:var(--muted); margin-bottom:6px;}
@@ -47,16 +40,15 @@
     .row{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;}
     .card{flex:1; min-width:160px; padding:10px; border-radius:14px; border:1px solid var(--stroke); background: rgba(255,255,255,0.05);}
     .k{font-size:12px; color:var(--muted); margin-bottom:4px;}
-    .v{font-size:16px; font-weight:800; display:flex; align-items:center; gap:8px;}
-    .hint{margin-top:10px; font-size:12px; color:var(--muted); line-height:1.35;}
+    .v{font-size:14px; font-weight:800; display:flex; align-items:center; gap:8px;}
     .good{color:var(--good); font-weight:800;}
     .gold{color:var(--gold); font-weight:800;}
+    .hint{margin-top:10px; font-size:12px; color:var(--muted); line-height:1.35;}
 
-    /* Top-right resource counters */
     #topRight{
       position:absolute; right:16px; top:16px;
       display:flex; flex-direction:column; gap:10px;
-      z-index:60;
+      z-index:20;
     }
     .counter{
       display:flex; align-items:center; justify-content:space-between;
@@ -69,29 +61,58 @@
       box-shadow: var(--shadow);
     }
     .counterLeft{display:flex; align-items:center; gap:10px;}
-    .icon{
-      width:22px; height:22px;
-      display:inline-block;
-      border-radius: 7px;
-      background: rgba(255,255,255,0.06);
-      border:1px solid rgba(255,255,255,0.12);
-    }
+    .icon{width:22px;height:22px;border-radius:7px;background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); display:grid; place-items:center;}
     .count{font-weight:900; font-size:18px;}
-    .plus{
-      width:26px; height:26px; border-radius: 8px;
-      border:1px solid rgba(255,255,255,0.20);
-      background: rgba(102,242,185,0.12);
-      display:flex; align-items:center; justify-content:center;
-      color: var(--good);
-      font-weight:900;
-    }
+    .plus{width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,255,255,0.20);background: rgba(102,242,185,0.12);display:flex;align-items:center;justify-content:center;color: var(--good);font-weight:900;}
 
-    /* Bottom pickup notifications */
+    #attackBtn{
+      position:absolute; right:22px; bottom:120px;
+      width:120px; height:120px; border-radius: 999px;
+      border:1px solid rgba(255,255,255,0.18);
+      background: radial-gradient(circle at 40% 35%, rgba(255,220,140,0.22), rgba(255,208,102,0.08) 55%, rgba(10,14,26,0.55));
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      display:flex; align-items:center; justify-content:center;
+      z-index:20;
+      cursor:pointer;
+      user-select:none;
+      touch-action: manipulation;
+    }
+    #attackBtn:active{transform: translateY(1px) scale(0.99);}
+    .attackInner{
+      width:92px; height:92px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:6px;
+    }
+    .attackLabel{font-weight:900; color:var(--gold);}
+    .small{font-size:11px; color:var(--muted); font-weight:700;}
+
+    #toast{
+      position:absolute; left:50%; top:16px; transform: translateX(-50%);
+      width:min(520px, calc(100vw - 30px));
+      padding:10px 14px;
+      border-radius: 16px;
+      border:1px solid var(--stroke);
+      background: rgba(10,14,26,0.55);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      z-index:20;
+      opacity:0; transform: translate(-50%, -6px);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events:none;
+      text-align:center;
+      color: var(--muted);
+      font-weight:700;
+    }
+    #toast.show{opacity:1; transform: translate(-50%, 0);}
+
     #feed{
       position:absolute; left:50%; bottom:22px; transform: translateX(-50%);
       width:min(760px, calc(100vw - 30px));
       display:flex; flex-direction:column; gap:10px;
-      z-index:60;
+      z-index:20;
       pointer-events:none;
     }
     .feedItem{
@@ -107,53 +128,8 @@
       transition: opacity .18s ease, transform .18s ease;
     }
     .feedItem.show{opacity:1; transform: translateY(0);}
-    .feedText{font-weight:800; letter-spacing:0.1px;}
+    .feedText{font-weight:800;}
     .feedSub{color:var(--muted); font-size:12px; margin-left:auto;}
-
-    /* Mobile Attack button (right) */
-    #attackBtn{
-      position:absolute; right:22px; bottom:120px;
-      width:120px; height:120px; border-radius: 999px;
-      border:1px solid rgba(255,255,255,0.18);
-      background: radial-gradient(circle at 40% 35%, rgba(255,220,140,0.22), rgba(255,208,102,0.08) 55%, rgba(10,14,26,0.55));
-      backdrop-filter: blur(10px);
-      box-shadow: var(--shadow);
-      display:flex; align-items:center; justify-content:center;
-      z-index:60;
-      cursor:pointer;
-      user-select:none;
-      touch-action: manipulation;
-    }
-    #attackBtn:active{transform: translateY(1px) scale(0.99);}
-    .attackInner{
-      width:92px; height:92px; border-radius:999px;
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.06);
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      gap:6px;
-    }
-    .attackLabel{font-weight:900; color:var(--gold); letter-spacing:0.3px;}
-    .small{font-size:11px; color:var(--muted); font-weight:700;}
-
-    /* Center helper toast */
-    #toast{
-      position:absolute; left:50%; top:16px; transform: translateX(-50%);
-      width:min(520px, calc(100vw - 30px));
-      padding:10px 14px;
-      border-radius: 16px;
-      border:1px solid var(--stroke);
-      background: rgba(10,14,26,0.55);
-      backdrop-filter: blur(10px);
-      box-shadow: var(--shadow);
-      z-index:60;
-      opacity:0; transform: translate(-50%, -6px);
-      transition: opacity .18s ease, transform .18s ease;
-      pointer-events:none;
-      text-align:center;
-      color: var(--muted);
-      font-weight:700;
-    }
-    #toast.show{opacity:1; transform: translate(-50%, 0);}
 
     @media (max-width: 820px){
       #hud{width: 330px;}
@@ -164,7 +140,7 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="barsTop"></div><div id="barsBot"></div>
+  <canvas id="game"></canvas>
 
   <div id="toast"></div>
 
@@ -186,7 +162,7 @@
       </div>
       <div class="card">
         <div class="k">Controls</div>
-        <div class="v" style="font-size:14px">
+        <div class="v">
           <span class="good">Click</span> to look · <span class="good">WASD / Arrows</span>
         </div>
       </div>
@@ -194,21 +170,21 @@
 
     <div class="hint">
       Sprint: <span class="good">Shift</span> · Attack: <span class="good">Space / Click</span><br/>
-      Enter the <span class="gold">portal gate</span> to reach the dungeon.
+      Walk into the <span class="gold">portal gate</span> to reach the dungeon.
     </div>
   </div>
 
   <div id="topRight">
     <div class="counter">
       <div class="counterLeft">
-        <span class="icon" id="woodIcon"></span>
+        <span class="icon">🪵</span>
         <div class="count" id="woodCount">0</div>
       </div>
       <div class="plus">+</div>
     </div>
     <div class="counter">
       <div class="counterLeft">
-        <span class="icon" id="stoneIcon"></span>
+        <span class="icon">🪨</span>
         <div class="count" id="stoneCount">0</div>
       </div>
       <div class="plus">+</div>
@@ -226,39 +202,15 @@
   </div>
 </div>
 
-<script type="module">
-  import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+<!-- Babylon CDN -->
+<script src="https://cdn.babylonjs.com/babylon.js"></script>
 
-  // =========================
-  // 16:9 fixed internal render
-  // =========================
-  const INTERNAL_W = 1280, INTERNAL_H = 720, INTERNAL_ASPECT = INTERNAL_W / INTERNAL_H;
-  const wrap = document.getElementById("wrap");
-  const barsTop = document.getElementById("barsTop");
-  const barsBot = document.getElementById("barsBot");
+<script>
+(() => {
+  const canvas = document.getElementById("game");
+  const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 
-  const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(INTERNAL_W, INTERNAL_H, false);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  wrap.appendChild(renderer.domElement);
-
-  function resizeToWindow(){
-    const ww = innerWidth, wh = innerHeight;
-    let drawW = ww, drawH = ww / INTERNAL_ASPECT;
-    if (drawH > wh){ drawH = wh; drawW = wh * INTERNAL_ASPECT; }
-    renderer.domElement.style.cssText =
-      `position:absolute;left:${(ww-drawW)/2}px;top:${(wh-drawH)/2}px;width:${drawW}px;height:${drawH}px;`;
-    const barH = Math.max(0, (wh - drawH)/2);
-    barsTop.style.height = `${barH}px`;
-    barsBot.style.height = `${barH}px`;
-  }
-  addEventListener("resize", resizeToWindow);
-  resizeToWindow();
-
-  // =========================
-  // UI helpers
-  // =========================
+  // UI
   const ui = {
     zoneChip: document.getElementById("zoneChip"),
     hpText: document.getElementById("hpText"),
@@ -267,608 +219,456 @@
     stoneText: document.getElementById("stoneText"),
     woodCount: document.getElementById("woodCount"),
     stoneCount: document.getElementById("stoneCount"),
-    feed: document.getElementById("feed"),
     toast: document.getElementById("toast"),
+    feed: document.getElementById("feed"),
     attackBtn: document.getElementById("attackBtn"),
-    woodIcon: document.getElementById("woodIcon"),
-    stoneIcon: document.getElementById("stoneIcon"),
   };
-
-  function setIcon(el, type){
-    const svg = (type==="wood")
-      ? `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 64 64">
-          <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#FFDD8A"/><stop offset="1" stop-color="#C97B2D"/></linearGradient></defs>
-          <path d="M10 36c12-18 32-18 44 0-12 18-32 18-44 0Z" fill="url(#g)"/>
-          <path d="M18 34c10-10 18-10 28 0" stroke="rgba(255,255,255,.55)" stroke-width="4" fill="none" stroke-linecap="round"/>
-        </svg>`
-      : `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 64 64">
-          <defs><linearGradient id="s" x1="0" x2="1"><stop stop-color="#D9E6FF"/><stop offset="1" stop-color="#6078B6"/></linearGradient></defs>
-          <path d="M18 10 52 26 46 54 12 38Z" fill="url(#s)"/>
-          <path d="M22 26l18 10" stroke="rgba(255,255,255,.55)" stroke-width="4" stroke-linecap="round"/>
-        </svg>`;
-    el.style.background = "rgba(255,255,255,0.06)";
-    el.style.display = "grid";
-    el.style.placeItems = "center";
-    el.innerHTML = svg;
-  }
-  setIcon(ui.woodIcon, "wood");
-  setIcon(ui.stoneIcon, "stone");
 
   let toastTimer = null;
   function showToast(msg){
     ui.toast.textContent = msg;
     ui.toast.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=>ui.toast.classList.remove("show"), 1500);
+    toastTimer = setTimeout(() => ui.toast.classList.remove("show"), 1400);
   }
-
   function pushFeed(icon, text){
     const item = document.createElement("div");
     item.className = "feedItem";
-    item.innerHTML = `
-      <div style="font-size:20px">${icon}</div>
-      <div class="feedText">${text}</div>
-      <div class="feedSub">Collected</div>
-    `;
+    item.innerHTML = `<div style="font-size:20px">${icon}</div><div class="feedText">${text}</div><div class="feedSub">Collected</div>`;
     ui.feed.prepend(item);
     requestAnimationFrame(()=>item.classList.add("show"));
-    setTimeout(()=>{
-      item.classList.remove("show");
-      setTimeout(()=>item.remove(), 220);
-    }, 1200);
+    setTimeout(()=>{ item.classList.remove("show"); setTimeout(()=>item.remove(), 220); }, 1200);
   }
 
-  // =========================
-  // Game state
-  // =========================
-  const GAME = {
-    zone: "start",
-    hp: 10,
-    hpMax: 10,
-    inv: { wood: 0, stone: 0 }
-  };
-
+  const GAME = { zone:"start", hp:10, hpMax:10, wood:0, stone:0 };
   function syncUI(){
     ui.zoneChip.textContent = `Zone: ${GAME.zone === "start" ? "Start" : "Dungeon"}`;
     ui.hpText.textContent = `${GAME.hp}/${GAME.hpMax}`;
-    ui.hpFill.style.width = `${(GAME.hp / GAME.hpMax) * 100}%`;
-    ui.woodText.textContent = GAME.inv.wood;
-    ui.stoneText.textContent = GAME.inv.stone;
-    ui.woodCount.textContent = GAME.inv.wood;
-    ui.stoneCount.textContent = GAME.inv.stone;
+    ui.hpFill.style.width = `${(GAME.hp/GAME.hpMax)*100}%`;
+    ui.woodText.textContent = GAME.wood;
+    ui.stoneText.textContent = GAME.stone;
+    ui.woodCount.textContent = GAME.wood;
+    ui.stoneCount.textContent = GAME.stone;
   }
-  syncUI();
 
-  // =========================
-  // Toon/anime look
-  // =========================
-  function makeToonRamp(){
-    const size = 256;
-    const c = document.createElement("canvas");
-    c.width = size; c.height = 1;
-    const ctx = c.getContext("2d");
-    const g = ctx.createLinearGradient(0,0,size,0);
-    g.addColorStop(0.00, "#0b0f1a");
-    g.addColorStop(0.35, "#2a3554");
-    g.addColorStop(0.70, "#7b92d6");
-    g.addColorStop(1.00, "#ffffff");
-    ctx.fillStyle = g;
-    ctx.fillRect(0,0,size,1);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    return tex;
+  // Helpers: “anime-ish” flat materials + soft fog
+  function flatMat(scene, hex){
+    const m = new BABYLON.StandardMaterial("m", scene);
+    const c = BABYLON.Color3.FromHexString(hex);
+    m.diffuseColor = c;
+    m.specularColor = new BABYLON.Color3(0.05,0.05,0.05);
+    m.emissiveColor = c.scale(0.08); // subtle “toon glow”
+    return m;
   }
-  const toonRamp = makeToonRamp();
-  const toonMat = (hex) => new THREE.MeshToonMaterial({ color: hex, gradientMap: toonRamp });
 
-  function addOutline(mesh, scale=1.06, color=0x0b0f1a){
-    const outline = new THREE.Mesh(
-      mesh.geometry,
-      new THREE.MeshBasicMaterial({ color, side: THREE.BackSide })
+  // Scene
+  const createScene = () => {
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0.03,0.04,0.08,1);
+    scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
+    scene.fogDensity = 0.008;
+    scene.fogColor = new BABYLON.Color3(0.03,0.04,0.08);
+
+    // Lights
+    const hemi = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0,1,0), scene);
+    hemi.intensity = 0.9;
+    hemi.groundColor = new BABYLON.Color3(0.02,0.02,0.03);
+
+    const sun = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-0.4,-1,-0.2), scene);
+    sun.position = new BABYLON.Vector3(20,30,20);
+    sun.intensity = 1.15;
+
+    // Camera: smooth follow 3rd-person
+    const camera = new BABYLON.ArcRotateCamera("cam",
+      BABYLON.Tools.ToRadians(180),
+      BABYLON.Tools.ToRadians(65),
+      22,
+      new BABYLON.Vector3(0,1.7,0),
+      scene
     );
-    outline.scale.multiplyScalar(scale);
-    mesh.add(outline);
-  }
+    camera.lowerRadiusLimit = 14;
+    camera.upperRadiusLimit = 30;
+    camera.wheelDeltaPercentage = 0.01;
+    camera.attachControl(canvas, true);
+    camera.panningSensibility = 0;
+    camera.inertia = 0.85;
+    camera.angularSensibilityX = 2600;
+    camera.angularSensibilityY = 2600;
 
-  // =========================
-  // World setup
-  // =========================
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x070A12, 35, 170);
+    // Pointer lock on click
+    canvas.addEventListener("click", () => {
+      if (document.pointerLockElement !== canvas) canvas.requestPointerLock?.();
+    });
 
-  const camera = new THREE.PerspectiveCamera(58, INTERNAL_ASPECT, 0.1, 300);
+    // Enable collisions
+    scene.collisionsEnabled = true;
 
-  const hemi = new THREE.HemisphereLight(0xbfd3ff, 0x0b0f1a, 0.95);
-  scene.add(hemi);
+    // Player “capsule-ish” (no special geometry to break)
+    const player = BABYLON.MeshBuilder.CreateCylinder("player", {
+      height: 1.9, diameter: 1.2, tessellation: 16
+    }, scene);
+    player.position = new BABYLON.Vector3(0, 1.0, 40);
+    player.checkCollisions = true;
+    player.ellipsoid = new BABYLON.Vector3(0.55, 0.95, 0.55);
+    player.ellipsoidOffset = new BABYLON.Vector3(0, 0.95, 0);
+    player.material = flatMat(scene, "#D6E1FF");
 
-  const sun = new THREE.DirectionalLight(0xffffff, 1.25);
-  sun.position.set(14, 20, 10);
-  scene.add(sun);
+    const head = BABYLON.MeshBuilder.CreateSphere("head", { diameter: 0.85, segments: 16 }, scene);
+    head.parent = player;
+    head.position = new BABYLON.Vector3(0, 0.95, 0);
+    head.material = flatMat(scene, "#A9C2FF");
 
-  // Zone groups
-  const startGroup = new THREE.Group();
-  const dungeonGroup = new THREE.Group();
-  scene.add(startGroup);
-  scene.add(dungeonGroup);
-  dungeonGroup.visible = false;
+    const buddy = BABYLON.MeshBuilder.CreateSphere("buddy", { diameter: 0.38, segments: 14 }, scene);
+    buddy.parent = player;
+    buddy.position = new BABYLON.Vector3(-0.9, 0.55, 0.4);
+    buddy.material = flatMat(scene, "#50C8A0");
 
-  // Start: ground + rocks + crystals
-  const startGround = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), toonMat(0x121a2f));
-  startGround.rotation.x = -Math.PI/2;
-  startGroup.add(startGround);
+    // Follow target
+    camera.lockedTarget = player;
 
-  function addRock(group, x,z, s=1){
-    const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0*s, 0), toonMat(0x2a3554));
-    m.position.set(x, 1.0*s, z);
-    m.rotation.set(Math.random(), Math.random(), Math.random());
-    addOutline(m, 1.07);
-    group.add(m);
-  }
-  for (let i=0;i<30;i++){
-    addRock(startGroup, (Math.random()-0.5)*90, (Math.random()-0.5)*80, 0.8+Math.random()*1.6);
-  }
+    // Gravity
+    const gravity = new BABYLON.Vector3(0, -0.5, 0);
+    let velocityY = 0;
 
-  function addCrystal(group, x,z){
-    const geo = new THREE.ConeGeometry(0.65, 3.0, 10);
-    const crystal = new THREE.Mesh(geo, toonMat(0x4aa9ff));
-    crystal.position.set(x, 1.5, z);
-    crystal.rotation.y = Math.random()*Math.PI;
-    addOutline(crystal, 1.06);
-    group.add(crystal);
+    // Zones
+    const startRoot = new BABYLON.TransformNode("startRoot", scene);
+    const dungeonRoot = new BABYLON.TransformNode("dungeonRoot", scene);
+    dungeonRoot.setEnabled(false);
 
-    const glow = new THREE.PointLight(0x4aa9ff, 0.7, 16);
-    glow.position.set(x, 2.2, z);
-    group.add(glow);
-  }
-  for (let i=0;i<9;i++){
-    addCrystal(startGroup, (Math.random()-0.5)*70, (Math.random()-0.5)*60);
-  }
+    // Start ground
+    const startGround = BABYLON.MeshBuilder.CreateGround("startGround", { width: 220, height: 220 }, scene);
+    startGround.material = flatMat(scene, "#121a2f");
+    startGround.checkCollisions = true;
+    startGround.parent = startRoot;
 
-  // Dungeon: floor + corridor + room + lanterns
-  const dungeonFloor = new THREE.Mesh(new THREE.PlaneGeometry(110, 240), toonMat(0x0f1220));
-  dungeonFloor.rotation.x = -Math.PI/2;
-  dungeonFloor.position.set(0, 0, -140);
-  dungeonGroup.add(dungeonFloor);
+    // Start rocks
+    const rockMat = flatMat(scene, "#2a3554");
+    for (let i=0;i<28;i++){
+      const r = BABYLON.MeshBuilder.CreatePolyhedron("r"+i, { type: 2, size: 1.0 + Math.random()*1.6 }, scene);
+      r.position = new BABYLON.Vector3((Math.random()-0.5)*90, 1.0 + Math.random()*1.2, (Math.random()-0.5)*80);
+      r.rotation = new BABYLON.Vector3(Math.random(), Math.random(), Math.random());
+      r.material = rockMat;
+      r.parent = startRoot;
+      r.checkCollisions = true;
+    }
 
-  function addWall(x,y,z,w,h,d){
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), toonMat(0x1a2240));
-    wall.position.set(x,y,z);
-    addOutline(wall, 1.03);
-    dungeonGroup.add(wall);
-  }
-  addWall(-14, 2.7, -110, 2.5, 5.4, 90);
-  addWall( 14, 2.7, -110, 2.5, 5.4, 90);
-  addWall( 0, 2.7, -210, 40, 5.4, 2.5);
-  addWall(-20,2.7, -190, 2.5, 5.4, 40);
-  addWall( 20,2.7, -190, 2.5, 5.4, 40);
+    // Portal gate
+    const gate = new BABYLON.TransformNode("gate", scene);
+    gate.position = new BABYLON.Vector3(0,0,-70);
+    gate.parent = startRoot;
 
-  function addLantern(x,z){
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.22,2.3,10), toonMat(0x2a3554));
-    pole.position.set(x, 1.15, z);
-    addOutline(pole, 1.06);
-    dungeonGroup.add(pole);
+    const torus = BABYLON.MeshBuilder.CreateTorus("torus", { diameter: 10.4, thickness: 0.75, tessellation: 48 }, scene);
+    torus.rotation.x = Math.PI/2;
+    torus.position.y = 3.6;
+    torus.material = flatMat(scene, "#6a7db0");
+    torus.parent = gate;
 
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 14), toonMat(0xffd066));
-    lamp.position.set(x, 2.25, z);
-    addOutline(lamp, 1.06);
-    dungeonGroup.add(lamp);
+    const pMat = flatMat(scene, "#2a3554");
+    const pillarL = BABYLON.MeshBuilder.CreateCylinder("pillarL",{ height:7.2, diameterTop:1.2, diameterBottom:1.5, tessellation:14 },scene);
+    pillarL.position = new BABYLON.Vector3(-4.4, 3.6, 0); pillarL.material = pMat; pillarL.parent = gate; pillarL.checkCollisions = true;
+    const pillarR = pillarL.clone("pillarR"); pillarR.position.x = 4.4; pillarR.parent = gate;
 
-    const light = new THREE.PointLight(0xffd066, 0.85, 18);
-    light.position.set(x, 2.25, z);
-    dungeonGroup.add(light);
-  }
-  addLantern(-8, -130);
-  addLantern( 8, -155);
-  addLantern( 0, -185);
+    // Portal disc with emissive “swirl”
+    const portal = BABYLON.MeshBuilder.CreateDisc("portal",{ radius:4.3, tessellation:64 },scene);
+    portal.rotation.x = Math.PI/2;
+    portal.position = new BABYLON.Vector3(0, 3.6, 0);
+    portal.parent = gate;
 
-  // Portal gate in start area
-  const gate = new THREE.Group();
-  gate.position.set(0,0,-70);
-  startGroup.add(gate);
+    const portalMat = new BABYLON.StandardMaterial("portalMat", scene);
+    portalMat.emissiveColor = BABYLON.Color3.FromHexString("#66f2b9");
+    portalMat.diffuseColor = BABYLON.Color3.FromHexString("#0a1020");
+    portalMat.alpha = 0.92;
+    portal.material = portalMat;
 
-  const frame = new THREE.Mesh(new THREE.TorusGeometry(5.0, 0.38, 10, 28), toonMat(0x6a7db0));
-  frame.rotation.x = Math.PI/2; frame.position.y = 3.6;
-  addOutline(frame, 1.05);
-  gate.add(frame);
+    const portalLight = new BABYLON.PointLight("portalLight", new BABYLON.Vector3(0,3.6,-70), scene);
+    portalLight.diffuse = BABYLON.Color3.FromHexString("#66f2b9");
+    portalLight.intensity = 1.15;
+    portalLight.range = 24;
 
-  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.65,0.8,7.2, 12), toonMat(0x2a3554));
-  pillar.position.set(-4.4, 3.6, 0); addOutline(pillar, 1.06); gate.add(pillar);
-  const pillar2 = pillar.clone(); pillar2.position.set(4.4, 3.6, 0); gate.add(pillar2);
+    // Dungeon
+    const dungeonFloor = BABYLON.MeshBuilder.CreateGround("dungeonFloor", { width: 110, height: 240 }, scene);
+    dungeonFloor.position = new BABYLON.Vector3(0,0,-140);
+    dungeonFloor.material = flatMat(scene, "#0f1220");
+    dungeonFloor.checkCollisions = true;
+    dungeonFloor.parent = dungeonRoot;
 
-  function makePortalTexture(){
-    const s = 512;
-    const c = document.createElement("canvas");
-    c.width = s; c.height = s;
-    const ctx = c.getContext("2d");
+    function wall(x,y,z,w,h,d){
+      const m = BABYLON.MeshBuilder.CreateBox("wall",{ width:w, height:h, depth:d },scene);
+      m.position = new BABYLON.Vector3(x,y,z);
+      m.material = flatMat(scene, "#1a2240");
+      m.checkCollisions = true;
+      m.parent = dungeonRoot;
+      return m;
+    }
+    wall(-14, 2.7, -110, 2.5, 5.4, 90);
+    wall( 14, 2.7, -110, 2.5, 5.4, 90);
+    wall( 0, 2.7, -210, 40, 5.4, 2.5);
+    wall(-20, 2.7, -190, 2.5, 5.4, 40);
+    wall( 20, 2.7, -190, 2.5, 5.4, 40);
 
-    function draw(t){
-      ctx.clearRect(0,0,s,s);
-      ctx.save();
-      ctx.translate(s/2, s/2);
+    function lantern(x,z){
+      const pole = BABYLON.MeshBuilder.CreateCylinder("pole",{ height:2.3, diameterTop:0.36, diameterBottom:0.44, tessellation:12 },scene);
+      pole.position = new BABYLON.Vector3(x, 1.15, z);
+      pole.material = rockMat;
+      pole.parent = dungeonRoot;
 
-      const rings = 80;
-      for (let i=0;i<rings;i++){
-        const r = (i / rings) * (s*0.45);
-        const a = i*0.25 + t*1.7;
-        const x = Math.cos(a) * r * 0.07;
-        const y = Math.sin(a) * r * 0.07;
+      const lamp = BABYLON.MeshBuilder.CreateSphere("lamp",{ diameter:0.72, segments:14 },scene);
+      lamp.position = new BABYLON.Vector3(x, 2.25, z);
+      lamp.material = flatMat(scene, "#ffd066");
+      lamp.parent = dungeonRoot;
 
-        const grad = ctx.createRadialGradient(x,y, r*0.05, x,y, r*0.18);
-        grad.addColorStop(0, "rgba(90,255,210,0.65)");
-        grad.addColorStop(0.6, "rgba(80,200,160,0.20)");
-        grad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(x,y, r*0.22, 0, Math.PI*2);
-        ctx.fill();
+      const l = new BABYLON.PointLight("lanternLight", new BABYLON.Vector3(x,2.25,z), scene);
+      l.diffuse = BABYLON.Color3.FromHexString("#ffd066");
+      l.intensity = 0.95;
+      l.range = 20;
+    }
+    lantern(-8, -130);
+    lantern( 8, -155);
+    lantern( 0, -185);
+
+    // Breakables + Loot
+    const breakables = [];
+    const loot = [];
+
+    const crateMat = flatMat(scene, "#7b5630");
+
+    function spawnCrate(x,z){
+      const c = BABYLON.MeshBuilder.CreateBox("crate",{ size:1.6 },scene);
+      c.position = new BABYLON.Vector3(x, 0.8, z);
+      c.material = crateMat;
+      c.parent = dungeonRoot;
+      c.metadata = { hp:2 };
+      breakables.push(c);
+    }
+    for (let i=0;i<12;i++){
+      spawnCrate((Math.random()-0.5)*22, -200 + (Math.random()-0.5)*22);
+    }
+
+    function spawnLoot(type, x, z){
+      const s = BABYLON.MeshBuilder.CreateSphere("loot",{ diameter:0.65, segments:12 },scene);
+      s.position = new BABYLON.Vector3(x, 1.35, z);
+      s.material = flatMat(scene, type === "wood" ? "#66f2b9" : "#ffd066");
+      s.material.emissiveColor = BABYLON.Color3.FromHexString(type === "wood" ? "#66f2b9" : "#ffd066").scale(0.8);
+
+      const gl = new BABYLON.PointLight("lootLight", new BABYLON.Vector3(x,1.6,z), scene);
+      gl.diffuse = BABYLON.Color3.FromHexString(type === "wood" ? "#66f2b9" : "#ffd066");
+      gl.intensity = 0.85;
+      gl.range = 12;
+
+      s.parent = dungeonRoot;
+      loot.push({ type, mesh:s, light:gl, t: Math.random()*10 });
+    }
+
+    // Zone switching
+    function setZone(next){
+      if (GAME.zone === next) return;
+      GAME.zone = next;
+      if (next === "dungeon"){
+        startRoot.setEnabled(false);
+        dungeonRoot.setEnabled(true);
+        scene.fogDensity = 0.014;
+        scene.fogColor = new BABYLON.Color3(0.015,0.02,0.05);
+        showToast("Entered the dungeon.");
+      } else {
+        startRoot.setEnabled(true);
+        dungeonRoot.setEnabled(false);
+        scene.fogDensity = 0.008;
+        scene.fogColor = new BABYLON.Color3(0.03,0.04,0.08);
+        showToast("Returned to start.");
       }
-
-      const edge = ctx.createRadialGradient(0,0, s*0.18, 0,0, s*0.48);
-      edge.addColorStop(0, "rgba(160,255,230,0)");
-      edge.addColorStop(0.65, "rgba(120,255,220,0.08)");
-      edge.addColorStop(0.88, "rgba(120,255,220,0.30)");
-      edge.addColorStop(1, "rgba(120,255,220,0)");
-      ctx.fillStyle = edge;
-      ctx.beginPath();
-      ctx.arc(0,0, s*0.48, 0, Math.PI*2);
-      ctx.fill();
-
-      ctx.restore();
+      syncUI();
     }
 
-    draw(0);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
+    // Movement input
+    const keys = new Set();
+    window.addEventListener("keydown", (e)=>keys.add(e.key.toLowerCase()));
+    window.addEventListener("keyup", (e)=>keys.delete(e.key.toLowerCase()));
 
-    return { tex, canvas:c, draw };
-  }
+    // Attack
+    let attackCd = 0;
+    function doAttack(){
+      if (attackCd > 0) return;
+      attackCd = 0.22;
 
-  const portalTexObj = makePortalTexture();
-  const portalMat = new THREE.MeshBasicMaterial({
-    map: portalTexObj.tex,
-    transparent:true,
-    opacity:0.95,
-    side: THREE.DoubleSide
-  });
+      // Quick “slash” ring
+      const ring = BABYLON.MeshBuilder.CreateTorus("slash",{ diameter:3.0, thickness:0.08, tessellation:48 },scene);
+      ring.position = player.position.clone();
+      ring.position.y = 0.12;
+      ring.rotation.x = Math.PI/2;
+      const m = new BABYLON.StandardMaterial("slashMat", scene);
+      m.emissiveColor = new BABYLON.Color3(1,1,1);
+      m.alpha = 0.35;
+      m.disableLighting = true;
+      ring.material = m;
 
-  const portalDisc = new THREE.Mesh(new THREE.CircleGeometry(4.3, 64), portalMat);
-  portalDisc.position.set(0, 3.6, 0);
-  portalDisc.rotation.x = Math.PI/2;
-  gate.add(portalDisc);
+      let k = 0;
+      const obs = scene.onBeforeRenderObservable.add(() => {
+        const dt = engine.getDeltaTime()/1000;
+        k += dt*5.5;
+        ring.scaling.setAll(1 + k*0.25);
+        ring.material.alpha = Math.max(0, 0.35*(1-k));
+        if (k >= 1){
+          scene.onBeforeRenderObservable.remove(obs);
+          ring.dispose();
+        }
+      });
 
-  const portalGlow = new THREE.PointLight(0x50c8a0, 1.1, 26);
-  portalGlow.position.set(0, 3.6, 0);
-  gate.add(portalGlow);
+      if (GAME.zone !== "dungeon") return;
 
-  // =========================
-  // Player
-  // =========================
-  const player = new THREE.Group();
-  scene.add(player);
+      // hit crates near player
+      const hitR = 2.9;
+      for (let i=breakables.length-1; i>=0; i--){
+        const b = breakables[i];
+        if (!b || b.isDisposed()) { breakables.splice(i,1); continue; }
+        const d = BABYLON.Vector3.Distance(player.position, b.position);
+        if (d <= hitR){
+          b.metadata.hp -= 1;
+          b.position.x += (Math.random()<0.5?-0.15:0.15);
+          b.position.z += (Math.random()<0.5?-0.15:0.15);
+          if (b.metadata.hp <= 0){
+            const bx = b.position.x, bz = b.position.z;
+            b.dispose();
+            breakables.splice(i,1);
 
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 1.0, 6, 10), toonMat(0xD6E1FF));
-  body.position.y = 1.25; addOutline(body, 1.06); player.add(body);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), toonMat(0xA9C2FF));
-  head.position.y = 2.08; addOutline(head, 1.06); player.add(head);
-
-  const buddy = new THREE.Mesh(new THREE.SphereGeometry(0.20, 14, 14), toonMat(0x50C8A0));
-  buddy.position.set(-0.86, 1.75, 0.25); addOutline(buddy, 1.10); player.add(buddy);
-
-  player.position.set(0,0,40);
-
-  // =========================
-  // Input
-  // =========================
-  const input = { keys: new Set(), yaw: 0, pitch: 0, locked:false };
-
-  window.addEventListener("keydown", (e) => input.keys.add(e.key.toLowerCase()));
-  window.addEventListener("keyup",   (e) => input.keys.delete(e.key.toLowerCase()));
-
-  // Pointer lock: only lock if not locked (so clicks can attack later)
-  renderer.domElement.addEventListener("click", () => {
-    if (document.pointerLockElement !== renderer.domElement) {
-      renderer.domElement.requestPointerLock?.();
-    }
-  });
-
-  document.addEventListener("pointerlockchange", () => {
-    input.locked = (document.pointerLockElement === renderer.domElement);
-    if (input.locked) showToast("Mouse look enabled. (Esc to release)");
-  });
-
-  document.addEventListener("mousemove", (e) => {
-    if (!input.locked) return;
-    const sens = 0.0023;
-    input.yaw   -= e.movementX * sens;
-    input.pitch -= e.movementY * sens;
-    input.pitch = Math.max(-0.85, Math.min(0.55, input.pitch));
-  });
-
-  // Touch look
-  let touchActive=false, lastX=0, lastY=0;
-  renderer.domElement.addEventListener("touchstart", (e)=>{
-    if (e.touches.length!==1) return;
-    touchActive=true;
-    lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
-  }, {passive:true});
-  renderer.domElement.addEventListener("touchmove", (e)=>{
-    if (!touchActive || e.touches.length!==1) return;
-    const x=e.touches[0].clientX, y=e.touches[0].clientY;
-    const dx=x-lastX, dy=y-lastY;
-    lastX=x; lastY=y;
-    const sens=0.0030;
-    input.yaw   -= dx*sens;
-    input.pitch -= dy*sens;
-    input.pitch = Math.max(-0.85, Math.min(0.55, input.pitch));
-  }, {passive:true});
-  renderer.domElement.addEventListener("touchend", ()=>touchActive=false, {passive:true});
-
-  // =========================
-  // Smooth movement
-  // =========================
-  const clock = new THREE.Clock();
-  let accumulator = 0;
-  const FIXED_DT = 1/120;
-
-  const v = new THREE.Vector3();
-  const wish = new THREE.Vector3();
-  const move = new THREE.Vector3();
-  const up = new THREE.Vector3(0,1,0);
-  const camForward = new THREE.Vector3();
-  const camRight = new THREE.Vector3();
-  const targetQ = new THREE.Quaternion();
-
-  function expDamp(a,b,lambda,dt){
-    return THREE.MathUtils.lerp(a,b,1 - Math.exp(-lambda*dt));
-  }
-
-  // Wide cinematic camera rig
-  const camPos = new THREE.Vector3(0, 10, 22);
-  const camTarget = new THREE.Vector3(0, 1.8, 0);
-
-  function updateCamera(dt){
-    const dist = 20.0;
-    const baseH = 9.0;
-    const offset = new THREE.Vector3(
-      Math.sin(input.yaw) * dist,
-      baseH + input.pitch * 6.0,
-      Math.cos(input.yaw) * dist
-    );
-
-    const desiredPos = player.position.clone().add(offset);
-    const desiredTarget = player.position.clone().add(new THREE.Vector3(0, 1.8, 0));
-
-    camPos.x = expDamp(camPos.x, desiredPos.x, 8.0, dt);
-    camPos.y = expDamp(camPos.y, desiredPos.y, 8.0, dt);
-    camPos.z = expDamp(camPos.z, desiredPos.z, 8.0, dt);
-
-    camTarget.x = expDamp(camTarget.x, desiredTarget.x, 11.0, dt);
-    camTarget.y = expDamp(camTarget.y, desiredTarget.y, 11.0, dt);
-    camTarget.z = expDamp(camTarget.z, desiredTarget.z, 11.0, dt);
-
-    camera.position.copy(camPos);
-    camera.lookAt(camTarget);
-  }
-
-  // =========================
-  // Breakables + collectibles
-  // =========================
-  const breakables = [];
-  const pickups = [];
-
-  function spawnCrate(x,z){
-    const crate = new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5), toonMat(0x7b5630));
-    crate.position.set(x, 0.75, z);
-    addOutline(crate, 1.07);
-    crate.userData.hp = 2;
-    dungeonGroup.add(crate);
-    breakables.push(crate);
-
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.95, 1.18, 26),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent:true, opacity:0.12, side:THREE.DoubleSide })
-    );
-    ring.rotation.x = -Math.PI/2;
-    ring.position.set(x, 0.04, z);
-    dungeonGroup.add(ring);
-    crate.userData.ring = ring;
-  }
-
-  for (let i=0;i<12;i++){
-    spawnCrate((Math.random()-0.5)*22, -200 + (Math.random()-0.5)*22);
-  }
-
-  function makePickupSprite(hex){
-    const s=256;
-    const c=document.createElement("canvas"); c.width=s; c.height=s;
-    const ctx=c.getContext("2d");
-    const cx=s/2, cy=s/2;
-
-    const g1=ctx.createRadialGradient(cx,cy, 10, cx,cy, 120);
-    g1.addColorStop(0, "rgba(255,255,255,0.70)");
-    g1.addColorStop(0.35, `rgba(${(hex>>16)&255},${(hex>>8)&255},${hex&255},0.40)`);
-    g1.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle=g1; ctx.beginPath(); ctx.arc(cx,cy, 120,0,Math.PI*2); ctx.fill();
-
-    const g2=ctx.createRadialGradient(cx-10,cy-14, 6, cx,cy, 52);
-    g2.addColorStop(0, "rgba(255,255,255,0.95)");
-    g2.addColorStop(0.35, `rgba(${(hex>>16)&255},${(hex>>8)&255},${hex&255},0.95)`);
-    g2.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(cx,cy, 52,0,Math.PI*2); ctx.fill();
-
-    ctx.strokeStyle="rgba(255,255,255,0.55)";
-    ctx.lineWidth=4; ctx.lineCap="round";
-    for (let i=0;i<6;i++){
-      const a=i*(Math.PI/3);
-      const r1=70, r2=92;
-      ctx.beginPath();
-      ctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1);
-      ctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2);
-      ctx.stroke();
-    }
-
-    const tex=new THREE.CanvasTexture(c);
-    tex.colorSpace=THREE.SRGBColorSpace;
-    tex.minFilter=THREE.LinearFilter;
-    tex.magFilter=THREE.LinearFilter;
-    return tex;
-  }
-
-  const woodSpriteTex = makePickupSprite(0x66f2b9);
-  const stoneSpriteTex = makePickupSprite(0xffd066);
-
-  function spawnPickup(type, x,z){
-    const tex = (type==="wood") ? woodSpriteTex : stoneSpriteTex;
-    const sprMat = new THREE.SpriteMaterial({ map: tex, transparent:true, opacity:1.0, depthWrite:false });
-    const spr = new THREE.Sprite(sprMat);
-    spr.position.set(x, 1.35, z);
-    spr.scale.set(1.8, 1.8, 1.8);
-    dungeonGroup.add(spr);
-
-    const light = new THREE.PointLight(type==="wood" ? 0x66f2b9 : 0xffd066, 0.9, 14);
-    light.position.set(x, 1.7, z);
-    dungeonGroup.add(light);
-
-    pickups.push({ type, spr, light, t: Math.random()*10 });
-  }
-
-  // =========================
-  // Attack (fixed input + breaks crates + loot)
-  // =========================
-  let attackCd = 0;
-
-  function doAttack(){
-    if (attackCd > 0) return;
-    attackCd = 0.22;
-
-    const arc = new THREE.Mesh(
-      new THREE.RingGeometry(1.4, 2.2, 32, 1, 0.2, Math.PI*1.25),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent:true, opacity:0.40, side:THREE.DoubleSide, depthWrite:false })
-    );
-    arc.rotation.x = -Math.PI/2;
-    arc.position.set(player.position.x, 0.06, player.position.z);
-    scene.add(arc);
-
-    const t0 = performance.now();
-    (function fade(){
-      const k = (performance.now() - t0) / 180;
-      arc.material.opacity = Math.max(0, 0.40 * (1-k));
-      arc.scale.setScalar(1 + k*0.18);
-      if (k < 1) requestAnimationFrame(fade);
-      else { scene.remove(arc); arc.geometry.dispose(); arc.material.dispose(); }
-    })();
-
-    if (GAME.zone !== "dungeon") return;
-
-    const hitR2 = 2.9 * 2.9;
-    for (let i=breakables.length-1; i>=0; i--){
-      const b = breakables[i];
-      if (!b.parent) { breakables.splice(i,1); continue; }
-      const dx = b.position.x - player.position.x;
-      const dz = b.position.z - player.position.z;
-      if (dx*dx + dz*dz <= hitR2){
-        b.userData.hp -= 1;
-
-        b.position.x += (Math.random()<0.5?-0.14:0.14);
-        b.position.z += (Math.random()<0.5?-0.14:0.14);
-
-        if (b.userData.hp <= 0){
-          spawnPickup("wood", b.position.x + (Math.random()-0.5)*0.8, b.position.z + (Math.random()-0.5)*0.8);
-          if (Math.random() < 0.65) spawnPickup("stone", b.position.x + (Math.random()-0.5)*0.8, b.position.z + (Math.random()-0.5)*0.8);
-
-          if (b.userData.ring) dungeonGroup.remove(b.userData.ring);
-          dungeonGroup.remove(b);
-          breakables.splice(i,1);
+            spawnLoot("wood", bx + (Math.random()-0.5)*0.8, bz + (Math.random()-0.5)*0.8);
+            if (Math.random() < 0.65) spawnLoot("stone", bx + (Math.random()-0.5)*0.8, bz + (Math.random()-0.5)*0.8);
+          }
         }
       }
     }
-  }
 
-  // ✅ Reliable click/tap attack (first click locks, then attacks)
-  renderer.domElement.addEventListener("pointerdown", (e) => {
-    if (document.pointerLockElement !== renderer.domElement) {
-      renderer.domElement.requestPointerLock?.();
-      return;
-    }
-    if (e.isPrimary) doAttack();
-  });
+    // Reliable attack inputs
+    canvas.addEventListener("pointerdown", (e) => {
+      // First click locks; later clicks attack
+      if (document.pointerLockElement !== canvas) {
+        canvas.requestPointerLock?.();
+        return;
+      }
+      if (e.isPrimary) doAttack();
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") { e.preventDefault(); doAttack(); }
+    });
+    ui.attackBtn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); doAttack(); });
 
-  window.addEventListener("keydown", (e) => {
-    if (e.code === "Space") { e.preventDefault(); doAttack(); }
-  });
+    // Main update loop
+    let lastT = performance.now();
+    showToast("Click to enable mouse look. Walk into the glowing portal.");
 
-  ui.attackBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); doAttack(); });
+    scene.onBeforeRenderObservable.add(() => {
+      const now = performance.now();
+      const dt = Math.min(0.05, (now - lastT) / 1000);
+      lastT = now;
 
-  // =========================
-  // Zone transitions
-  // =========================
-  const gateTrigger = { x: gate.position.x, z: gate.position.z, r: 4.5 };
-  const dungeonExitTrigger = { x: 0, z: -120, r: 5.0 };
+      // Buddy bob
+      buddy.position.y = 0.55 + Math.sin(now*0.006)*0.06;
 
-  function setZone(next){
-    if (GAME.zone === next) return;
-    GAME.zone = next;
+      // Attack cooldown
+      attackCd = Math.max(0, attackCd - dt);
 
-    if (next === "dungeon"){
-      startGroup.visible = false;
-      dungeonGroup.visible = true;
-      scene.fog.color.setHex(0x04060d);
-      scene.fog.near = 14;
-      scene.fog.far = 95;
-      showToast("Entered the dungeon.");
-    } else {
-      startGroup.visible = true;
-      dungeonGroup.visible = false;
-      scene.fog.color.setHex(0x070A12);
-      scene.fog.near = 35;
-      scene.fog.far = 170;
-      showToast("Returned to start.");
-    }
-    syncUI();
-  }
+      // Portal pulse
+      portalMat.emissiveColor = BABYLON.Color3.FromHexString("#66f2b9").scale(0.55 + 0.35*Math.sin(now*0.003));
 
-  // =========================
-  // Simulation step
-  // =========================
-  function step(dt){
-    portalTexObj.draw(clock.elapsedTime);
-    portalTexObj.tex.needsUpdate = true;
+      // Movement: correct forward relative to camera yaw
+      const sprint = keys.has("shift");
+      const speed = sprint ? 10.0 : 7.4;
 
-    attackCd = Math.max(0, attackCd - dt);
-    buddy.position.y = 1.75 + Math.sin(clock.elapsedTime*3.2)*0.06;
+      let mx = 0, mz = 0;
+      if (keys.has("a") || keys.has("arrowleft"))  mx -= 1;
+      if (keys.has("d") || keys.has("arrowright")) mx += 1;
+      if (keys.has("w") || keys.has("arrowup"))    mz += 1;   // forward
+      if (keys.has("s") || keys.has("arrowdown"))  mz -= 1;   // back
 
-    const sprint = input.keys.has("shift");
-    const maxSpeed = sprint ? 10.3 : 7.6;
+      // Normalise diagonal
+      const len = Math.hypot(mx, mz);
+      if (len > 0){ mx /= len; mz /= len; }
 
-    // ✅ Correct non-reversed input
-    move.set(0,0,0);
-    if (input.keys.has("w") || input.keys.has("arrowup"))    move.z += 1;
-    if (input.keys.has("s") || input.keys.has("arrowdown"))  move.z -= 1;
-    if (input.keys.has("a") || input.keys.has("arrowleft"))  move.x -= 1;
-    if (input.keys.has("d") || input.keys.has("arrowright")) move.x += 1;
-    if (move.lengthSq() > 0) move.normalize();
+      // Camera yaw direction from ArcRotate alpha
+      const yaw = camera.alpha;
+      const forward = new BABYLON.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)); // forward is -Z
+      const right   = new BABYLON.Vector3( Math.cos(yaw), 0, -Math.sin(yaw));
 
-    // ✅ Correct forward (-Z) basis
-    camForward.set(-Math.sin(input.yaw), 0, -Math.cos(input.yaw)).normalize();
-    camRight.crossVectors(up, camForward).normalize();
+      const wish = right.scale(mx).add(forward.scale(mz)).scale(speed);
 
-    wish.set(0,0,0)
-      .addScaledVector(camRight, move.x)
-      .addScaledVector(camForward, move.z)
-      .multiplyScalar(maxSpeed);
+      // Simple gravity
+      velocityY += gravity.y * dt;
+      const moveVec = new BABYLON.Vector3(wish.x*dt, velocityY*dt, wish.z*dt);
 
-    const accel = 22.0;
-    v.x = expDamp(v.x, wish.x, accel, dt);
-    v.z = expDamp(v.z, wish.z, accel, dt);
+      // Collisions movement
+      player.moveWithCollisions(moveVec);
 
-    player.position.x += v.x * dt;
-    player.position.z += v.z * dt;
+      // Ground snap
+      if (player.position.y < 1.0){
+        player.position.y = 1.0;
+        velocityY = 0;
+      }
 
-    const planar = Math.hypot(v.x, v.z);
-    if (planளம்
+      // Face move direction
+      if (len > 0.1){
+        const face = Math.atan2(wish.x, wish.z);
+        player.rotation.y = BABYLON.Scalar.LerpAngle(player.rotation.y, face, 0.18);
+      }
+
+      // Zone triggers
+      if (GAME.zone === "start"){
+        const dx = player.position.x - gate.getAbsolutePosition().x;
+        const dz = player.position.z - gate.getAbsolutePosition().z;
+        if (dx*dx + dz*dz < 4.7*4.7){
+          player.position = new BABYLON.Vector3(0, 1.0, -135);
+          velocityY = 0;
+          setZone("dungeon");
+          pushFeed("🌀", "Entered the dungeon.");
+        }
+      } else {
+        // exit corridor
+        const dx = player.position.x - 0;
+        const dz = player.position.z - (-120);
+        if (dx*dx + dz*dz < 5.0*5.0){
+          player.position = new BABYLON.Vector3(0, 1.0, -55);
+          velocityY = 0;
+          setZone("start");
+        }
+
+        // Loot bob + magnet pickup
+        const MAGNET = 2.6;
+        for (let i=loot.length-1;i>=0;i--){
+          const p = loot[i];
+          if (!p.mesh || p.mesh.isDisposed()){ loot.splice(i,1); continue; }
+          p.t += dt;
+          p.mesh.position.y = 1.35 + Math.sin(p.t*3.2)*0.16;
+
+          const d = BABYLON.Vector3.Distance(player.position, p.mesh.position);
+          if (d < MAGNET){
+            // magnet pull
+            p.mesh.position.x = BABYLON.Scalar.Lerp(p.mesh.position.x, player.position.x, 0.18);
+            p.mesh.position.z = BABYLON.Scalar.Lerp(p.mesh.position.z, player.position.z, 0.18);
+            p.light.position.x = p.mesh.position.x;
+            p.light.position.z = p.mesh.position.z;
+
+            if (d < 0.55){
+              if (p.type === "wood"){ GAME.wood += 1; pushFeed("🪵", "Picked up wood. +1"); }
+              else { GAME.stone += 1; pushFeed("🪨", "Picked up stone. +1"); }
+              p.light.dispose();
+              p.mesh.dispose();
+              loot.splice(i,1);
+              syncUI();
+            }
+          }
+        }
+      }
+
+      syncUI();
+    });
+
+    return scene;
+  };
+
+  const scene = createScene();
+  syncUI();
+
+  engine.runRenderLoop(() => scene.render());
+  window.addEventListener("resize", () => engine.resize());
+})();
+</script>
+</body>
+</html>
