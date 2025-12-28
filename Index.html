@@ -859,8 +859,11 @@
     if (move.lengthSq() > 0) move.normalize();
 
     // movement relative to yaw (this is what removes direction jank)
-    camForward.set(Math.sin(input.yaw), 0, Math.cos(input.yaw)).normalize();
-    camRight.crossVectors(camForward, up).normalize();
+    // Correct Three.js forward (-Z) so W = forward, S = back
+camForward.set(-Math.sin(input.yaw), 0, -Math.cos(input.yaw)).normalize();
+
+// Correct right-hand basis: right = up x forward
+camRight.crossVectors(up, camForward).normalize();
 
     wish.set(0,0,0)
       .addScaledVector(camRight, move.x)
